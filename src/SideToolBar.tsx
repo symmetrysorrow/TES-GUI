@@ -3,22 +3,22 @@ import { createContext, useContext, ReactNode, useState } from "react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useTargetState, TargetEnum } from "@/TargetContext.tsx";
 
-export enum ToolEnum {
+export enum SideToolEnum {
     SingleCalib,
     MultiCalib,
 }
 
 // Context の定義
-interface ToolbarContextType {
-    CurrentTool: ToolEnum | null;
-    setCurrentTool: (tool: ToolEnum | null) => void;
+interface SideToolbarContextType {
+    CurrentTool: SideToolEnum | null;
+    setCurrentTool: (tool: SideToolEnum | null) => void;
 }
 
-const ToolbarContext = createContext<ToolbarContextType | null>(null);
+const SideToolbarContext = createContext<SideToolbarContextType | null>(null);
 
 // カスタムフック
-export function useToolState() {
-    const context = useContext(ToolbarContext);
+export function useSideToolState() {
+    const context = useContext(SideToolbarContext);
     if (!context) {
         throw new Error("useToolState must be used within a ToolBarProvider");
     }
@@ -26,12 +26,12 @@ export function useToolState() {
 }
 
 // Provider の実装
-export function ToolBarProvider({ children }: { children: ReactNode }) {
-    const [CurrentTool, setCurrentTool] = useState<ToolEnum | null>(null);
+export function SideToolBarProvider({ children }: { children: ReactNode }) {
+    const [CurrentTool, setCurrentTool] = useState<SideToolEnum | null>(null);
     return (
-        <ToolbarContext.Provider value={{ CurrentTool, setCurrentTool }}>
+        <SideToolbarContext.Provider value={{ CurrentTool, setCurrentTool }}>
             {children}
-        </ToolbarContext.Provider>
+        </SideToolbarContext.Provider>
     );
 }
 
@@ -41,18 +41,18 @@ const tools = [
         title: "Single Calibration",
         description: "ある点でのフラックスジャンプを前後数点からの線形フィットで補正する。カーブしている部分にも適用可能。",
         icon: Home,
-        ToolType: ToolEnum.SingleCalib,
+        ToolType: SideToolEnum.SingleCalib,
     },
     {
         title: "Multiple Calibration",
         description: "IVの初めの数点を線形フィットすることで範囲内のすべてのジャンプを補正する。カーブしている部分には適用できない。",
         icon: Inbox,
-        ToolType: ToolEnum.MultiCalib,
+        ToolType: SideToolEnum.MultiCalib,
     },
 ];
 
-export default function ToolBar({ children }: { children: React.ReactNode }) {
-    const { CurrentTool, setCurrentTool } = useToolState(); // useState ではなく、useToolState を使う
+export default function SideToolBar({ children }: { children: React.ReactNode }) {
+    const { CurrentTool, setCurrentTool } = useSideToolState(); // useState ではなく、useToolState を使う
     const { CurrentTarget } = useTargetState();
 
     return (
@@ -66,12 +66,12 @@ export default function ToolBar({ children }: { children: React.ReactNode }) {
                                 {tools.map((tool) => (
                                     <li
                                         key={tool.title}
-                                        className={`flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors ${
+                                        className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
                                             CurrentTool === tool.ToolType ? "bg-gray-600" : "hover:bg-gray-700"
                                         }`}
                                         onClick={() => setCurrentTool(tool.ToolType)}
                                     >
-                                        <Tooltip>
+                                        <Tooltip delayDuration={700}>
                                             <TooltipTrigger asChild>
                                                 <div className="flex items-center gap-2">
                                                     <tool.icon />

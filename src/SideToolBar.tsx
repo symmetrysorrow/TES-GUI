@@ -51,16 +51,15 @@ const tools = [
     },
 ];
 
-export default function SideToolBar({ children }: { children: React.ReactNode }) {
+export default function SideToolBar({}: {}) {
     const { CurrentTool, setCurrentTool } = useSideToolState(); // useState ではなく、useToolState を使う
     const { CurrentTarget } = useTargetState();
 
     return (
         <TooltipProvider>
-            <div className="flex h-screen">
-                {/* IV ターゲットが選ばれたときのみツールバーを表示 */}
+            <div className="flex h-screen ">
                 {CurrentTarget === TargetEnum.IV && (
-                    <aside className="w-12 bg-gray-800 text-white p-4 flex flex-col items-center">
+                    <aside className="w-12 bg-gray-800 text-white p-4 flex flex-col items-center flex-shrink-0">
                         <nav>
                             <ul>
                                 {tools.map((tool) => (
@@ -87,8 +86,6 @@ export default function SideToolBar({ children }: { children: React.ReactNode })
                         </nav>
                     </aside>
                 )}
-
-                <main className="flex-1 p-4">{children}</main>
             </div>
         </TooltipProvider>
     );

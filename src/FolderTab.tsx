@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TargetEnum, useTargetState } from "@/TargetContext.tsx";
 import { Plus } from "lucide-react"; // アイコンを追加
 import SideToolBar, { SideToolBarProvider } from "./SideToolBar";
+import {TopToolbar} from "./TopToolBar";
 
 type TabItem = {
     id: string;
@@ -90,6 +91,8 @@ const DynamicTabs = () => {
                     ))}
                     <Plus size={20} onClick={addTab}/>
                 </TabsList>
+
+                <TopToolbar/>
 
                 {/* サイドバーとコンテンツを横並びに配置 */}
                 <div className="flex flex-grow w-full">

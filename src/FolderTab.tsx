@@ -16,29 +16,30 @@ type TabItem = {
 
 // フォルダパスから最後のディレクトリ名を取得
 const getFolderName = (path: string) => {
-    return path.split("/").filter(Boolean).pop() || "新しいタブ";
+    return path.split("\\").filter(Boolean).pop() || "新しいタブ";
 };
 
 const DynamicTabs = () => {
     const { setCurrentTarget } = useTargetState();
-    const [tabs, setTabs] = useState<TabItem[]>([]);
-    const [folderPaths, setFolderPaths] = useState<{ [id: string]: string | null }>({});
+
+    // 初期タブを作成
+    const initialTabId = crypto.randomUUID();
+    const [tabs, setTabs] = useState<TabItem[]>([
+        { id: initialTabId, title: "新しいタブ", content: null, TargetType: null }
+    ]);
+    const [folderPaths, setFolderPaths] = useState<{ [id: string]: string | null }>({ [initialTabId]: null });
+    const [currentTabId, setCurrentTabId] = useState<string>(initialTabId);
 
     const addTab = () => {
-        const newId = `tab-${tabs.length+1}`;
-        const initialFolderPath = `folders/${newId}`;
+        const newId = crypto.randomUUID();
 
         setTabs([
             ...tabs,
-            {
-                id: newId,
-                title: getFolderName(initialFolderPath), // 初期フォルダ名をセット
-                content: null, // 後で state を利用するので null
-                TargetType: null,
-            },
+            { id: newId, title: "新しいタブ", content: null, TargetType: null }
         ]);
 
-        setFolderPaths((prev) => ({ ...prev, [newId]: initialFolderPath }));
+        setFolderPaths((prev) => ({ ...prev, [newId]: null }));
+        setCurrentTabId(newId); // 新しいタブをアクティブにする
     };
 
     const handleOpenFolder = async (tabId: string) => {
@@ -60,15 +61,22 @@ const DynamicTabs = () => {
     };
 
     const removeTab = (id: string) => {
-        setTabs(tabs.filter((tab) => tab.id !== id));
+        const newTabs = tabs.filter((tab) => tab.id !== id);
+        setTabs(newTabs);
         setFolderPaths((prev) => {
             const updated = { ...prev };
             delete updated[id];
             return updated;
         });
+
+        if (id === currentTabId) {
+            // 現在のタブが削除された場合、最初のタブを選択
+            setCurrentTabId(newTabs.length > 0 ? newTabs[0].id : "");
+        }
     };
 
     const handleTabChange = (selectedTabId: string) => {
+        setCurrentTabId(selectedTabId);
         const selectedTab = tabs.find((tab) => tab.id === selectedTabId);
         if (selectedTab) {
             setCurrentTarget(selectedTab.TargetType ?? null);
@@ -77,7 +85,7 @@ const DynamicTabs = () => {
 
     return (
         <div className="w-full mx-auto bg-[#1f1f23] text-white min-h-screen flex flex-col">
-            <Tabs defaultValue={tabs[0]?.id} onValueChange={handleTabChange} className="h-full flex flex-col w-full">
+            <Tabs value={currentTabId} onValueChange={handleTabChange} className="h-full flex flex-col w-full">
                 {/* タブバー */}
                 <TabsList className="flex flex-glow bg-transparent rounded-t-lg w-full justify-start">
                     {tabs.map((tab) => (
@@ -116,7 +124,6 @@ const DynamicTabs = () => {
                         {tabs.map((tab) => (
                             <TabsContent key={tab.id} value={tab.id} className="h-full w-full">
                                 <div className="flex flex-col h-full justify-center items-center">
-                                    <h2 className="text-lg">フォルダをドロップ</h2>
                                     <Button onClick={() => handleOpenFolder(tab.id)}>フォルダを開く</Button>
                                     {folderPaths[tab.id] && <p className="mt-2">選択されたフォルダ: {folderPaths[tab.id]}</p>}
                                 </div>

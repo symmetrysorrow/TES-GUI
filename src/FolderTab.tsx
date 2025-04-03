@@ -6,6 +6,7 @@ import SideToolBar, { SideToolBarProvider } from "./SideToolBar";
 import { TopToolbar } from "./TopToolBar";
 import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
+import {invoke} from "@tauri-apps/api/core"
 
 type TabItem = {
     id: string;

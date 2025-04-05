@@ -1,17 +1,22 @@
-import {useEffect, useRef} from "react";
+import React, { useEffect, useRef } from "react";
 
+// Props型
 type RTContentProps = {
-    folderPath: string;
+    folderPath: string | null;
 };
 
+// メモ化されたコンポーネントに変更
 const RTContent: React.FC<RTContentProps> = ({ folderPath }) => {
     const mounted = useRef(false);
 
     useEffect(() => {
-        if (mounted.current) {
-            console.log("RTContent: フォルダパスが変更されました:", folderPath);
+        if (!mounted.current) {
+            // 初回作成時のみログを出力
+            console.log("RTContent: 初回作成時にのみフォルダパスを出力", folderPath);
+            mounted.current = true; // 初回マウント後にフラグを立てる
         } else {
-            mounted.current = true;
+            // タブ切り替え時には出力しない
+            console.log("RTContent: フォルダパスが変更されました:", folderPath);
         }
     }, [folderPath]);
 
@@ -23,4 +28,5 @@ const RTContent: React.FC<RTContentProps> = ({ folderPath }) => {
     );
 };
 
-export default RTContent;
+// React.memo を使用してコンポーネントをメモ化
+export default React.memo(RTContent);

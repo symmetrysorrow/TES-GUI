@@ -1,19 +1,17 @@
-import { useEffect ,useRef} from "react";
+import { useRef} from "react";
 
 type IVContentProps = {
     folderPath: string;
 };
 
 const IVContent: React.FC<IVContentProps> = ({ folderPath }) => {
-    const mounted = useRef(false);
+    const isFirstRender = useRef(true);
 
-    useEffect(() => {
-        if (mounted.current) {
-            console.log("IVContent: フォルダパスが変更されました:", folderPath);
-        } else {
-            mounted.current = true;
-        }
-    }, [folderPath]);
+    // 初めてレンダリングされた際に処理を行いたい
+    if (isFirstRender.current) {
+        console.log("IVContent: 初めてcontentとしてセットされました。フォルダパス:", folderPath);
+        isFirstRender.current = false;
+    }
 
     return (
         <div>

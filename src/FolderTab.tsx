@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import {useState ,ReactNode} from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TargetEnum, useTargetState } from "@/TargetContext.tsx";
 import { Plus } from "lucide-react";
@@ -14,7 +14,8 @@ import RTContent from "@/RTContent.tsx";
 type TabItem = {
     id: string;
     title: string;
-    content: ReactNode;
+    FolderPath: string | null;
+    content: ReactNode|null;
     TargetType: TargetEnum | null;
 };
 
@@ -29,15 +30,22 @@ const DynamicTabs = () => {
     // 初期タブを作成
     const initialTabId = crypto.randomUUID();
     const [tabs, setTabs] = useState<TabItem[]>([
-        { id: initialTabId, title: "新しいタブ", content: null, TargetType: null }
+        { id: initialTabId, title: "新しいタブ",FolderPath:null, content: null, TargetType: null }
     ]);
-    const [folderPaths, setFolderPaths] = useState<{ [id: string]: string | null }>({ [initialTabId]: null });
     const [currentTabId, setCurrentTabId] = useState<string>(initialTabId);
 
     const addTab = () => {
         const newId = crypto.randomUUID();
-        setTabs([...tabs, { id: newId, title: "新しいタブ", content: null, TargetType: null }]);
-        setFolderPaths((prev) => ({ ...prev, [newId]: null }));
+        const newTabContent = (
+            <div className="flex flex-col h-full justify-center items-center">
+                <Button onClick={() => handleOpenFolder(newId)}>フォルダを開く:new</Button>
+            </div>
+        );
+
+        setTabs((prevTabs) => [
+            ...prevTabs,
+            { id: newId, title: "新しいタブ", FolderPath:null,content: newTabContent, TargetType: null }
+        ]);
         setCurrentTabId(newId); // 新しいタブをアクティブにする
     };
 
@@ -45,32 +53,36 @@ const DynamicTabs = () => {
         const selected = await open({ directory: true });
         if (selected) {
             const folderPath = selected as string;
-            const folderName = getFolderName(folderPath);
+            const FolderTitle = getFolderName(folderPath);
 
             try {
                 // Rust側の `FindFolderType` を呼び出してフォルダの種類を取得
-                const folderType: string = await invoke("FindFolderType", { folderName: folderPath });
+                const folderType: string = await invoke("FindFolderType", { folderString: folderPath });
                 await invoke("greet", { name: folderPath });
 
                 let targetType: TargetEnum | null = null;
+                let content = null;
+
                 switch (folderType) {
                     case "IV":
                         targetType = TargetEnum.IV;
+                        content = <IVContent folderPath={folderPath} />;
                         break;
                     case "RT":
                         targetType = TargetEnum.RT;
+                        content = <RTContent folderPath={folderPath} />;
                         break;
                     case "Pulse":
                         targetType = TargetEnum.Pulse;
+                        content = <PulseContent folderPath={folderPath} />;
                         break;
                     default:
                         targetType = null;
                 }
 
-                setFolderPaths((prev) => ({ ...prev, [tabId]: folderPath }));
                 setTabs((prevTabs) =>
                     prevTabs.map((tab) =>
-                        tab.id === tabId ? { ...tab, title: folderName, TargetType: targetType } : tab
+                        tab.id === tabId ? { ...tab, title: FolderTitle, TargetType: targetType, content: content } : tab
                     )
                 );
 
@@ -85,11 +97,6 @@ const DynamicTabs = () => {
     const removeTab = (id: string) => {
         const newTabs = tabs.filter((tab) => tab.id !== id);
         setTabs(newTabs);
-        setFolderPaths((prev) => {
-            const updated = { ...prev };
-            delete updated[id];
-            return updated;
-        });
 
         if (id === currentTabId) {
             setCurrentTabId(newTabs.length > 0 ? newTabs[0].id : "");
@@ -141,24 +148,7 @@ const DynamicTabs = () => {
                     <div className="flex-grow p-4 bg-gray-900 text-white rounded-b-lg">
                         {tabs.map((tab) => (
                             <TabsContent key={tab.id} value={tab.id} className="h-full w-full">
-                                {(() => {
-                                    const folderPath = folderPaths[tab.id];
-                                    switch (tab.TargetType) {
-                                        case TargetEnum.IV:
-                                            return folderPath ? <IVContent folderPath={folderPath} /> : null;
-                                        case TargetEnum.RT:
-                                            return folderPath ? <RTContent folderPath={folderPath} /> : null;
-                                        case TargetEnum.Pulse:
-                                            return folderPath ? <PulseContent folderPath={folderPath} /> : null;
-                                        default:
-                                            return (
-                                                <div className="flex flex-col h-full justify-center items-center">
-                                                    <Button onClick={() => handleOpenFolder(tab.id)}>フォルダを開く</Button>
-                                                    {folderPath && <p className="mt-2">選択されたフォルダ: {folderPath}</p>}
-                                                </div>
-                                            );
-                                    }
-                                })()}
+                                {tab.content}
                             </TabsContent>
                         ))}
                     </div>

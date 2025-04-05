@@ -83,8 +83,8 @@ pub(crate) enum FolderType{
     IV,RT,Pulse
 }
 #[command]
-pub fn FindFolderType(folderName:String)->Result<String,String>{
-    let folder = Path::new(&folderName);
+pub fn FindFolderType(folderString:String)->Result<String,String>{
+    let folder = Path::new(&folderString);
     if !folder.exists() {
         return Err("Folder not found.".to_string());
     }

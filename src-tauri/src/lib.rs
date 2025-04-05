@@ -4,30 +4,22 @@ mod PulseProcessor;
 mod TESAnalyzer;
 mod DataProcessor;
 mod PyMod;
-mod TES_Err;
 mod Config;
 
-pub use DataProcessor::*;
-pub use TESAnalyzer::*;
-pub use PulseProcessor::*;
-
 use std::sync::Mutex;
-use tauri::State;
-use PulseProcessor::{CreatePulseProcessor, DeletePulseProcessor, PPAnalyzeFolderCommand,PPSetDataPathCommand};
-use TESAnalyzer::IV::{IVProcessorS, CreateIVProcessor, DeleteIVProcessor, IVAnalyzeFolderCommand, IVSetDataPathCommand,SingleCalibCommand,MultipleCalibCommand};
-use TESAnalyzer::RT::{RTProcessorS, CreateRTProcessor, DeleteRTProcessor, RTAnalyzeFolderCommand, RTSetDataPathCommand};
-struct RTState{
+
+// 状態管理構造体
+struct RTState {
     RTProcessor: Mutex<Option<TESAnalyzer::RT::RTProcessorS>>,
 }
-struct IVState{
+struct IVState {
     IVProcessor: Mutex<Option<TESAnalyzer::IV::IVProcessorS>>,
 }
-
-struct PulseState{
+struct PulseState {
     PulseProcessor: Mutex<Option<PulseProcessor::PulseProcessorS>>,
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+// Tauri コマンドの例
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -38,36 +30,45 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(PulseState{
+
+        // 状態の管理
+        .manage(PulseState {
             PulseProcessor: Mutex::new(None),
         })
-        .manage(IVState{
+        .manage(IVState {
             IVProcessor: Mutex::new(None),
         })
-        .manage(RTState{
+        .manage(RTState {
             RTProcessor: Mutex::new(None),
         })
+
+        // ✅ すべてのコマンドをここでまとめて指定
         .invoke_handler(tauri::generate_handler![
-            CreatePulseProcessor,
-            DeletePulseProcessor,
-            PPAnalyzeFolderCommand,
-            PPSetDataPathCommand
+            greet,
+            DataProcessor::FindFolderType,
+
+            // PulseProcessor commands
+            PulseProcessor::CreatePulseProcessor,
+            PulseProcessor::DeletePulseProcessor,
+            PulseProcessor::PPAnalyzeFolderCommand,
+            PulseProcessor::PPSetDataPathCommand,
+
+            // IV commands
+            TESAnalyzer::IV::CreateIVProcessor,
+            TESAnalyzer::IV::DeleteIVProcessor,
+            TESAnalyzer::IV::IVAnalyzeFolderCommand,
+            TESAnalyzer::IV::IVSetDataPathCommand,
+            TESAnalyzer::IV::SingleCalibCommand,
+            TESAnalyzer::IV::MultipleCalibCommand,
+
+            // RT commands
+            TESAnalyzer::RT::CreateRTProcessor,
+            TESAnalyzer::RT::DeleteRTProcessor,
+            TESAnalyzer::RT::RTAnalyzeFolderCommand,
+            TESAnalyzer::RT::RTSetDataPathCommand
         ])
-        .invoke_handler(tauri::generate_handler![
-            CreateIVProcessor,
-            DeleteIVProcessor,
-            IVAnalyzeFolderCommand,
-            IVSetDataPathCommand,
-            SingleCalibCommand,
-            MultipleCalibCommand
-        ])
-        .invoke_handler(tauri::generate_handler![
-            CreateRTProcessor,
-            DeleteRTProcessor,
-            RTAnalyzeFolderCommand,
-            RTSetDataPathCommand
-        ])
-        .invoke_handler(tauri::generate_handler![greet])
+
+        // 実行
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

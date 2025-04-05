@@ -6,7 +6,8 @@ import SideToolBar, { SideToolBarProvider } from "./SideToolBar";
 import { TopToolbar } from "./TopToolBar";
 import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
-import {invoke} from "@tauri-apps/api/core"
+import { invoke } from "@tauri-apps/api/core";
+import IVContent from "@/IVContent";
 
 type TabItem = {
     id: string;
@@ -33,12 +34,7 @@ const DynamicTabs = () => {
 
     const addTab = () => {
         const newId = crypto.randomUUID();
-
-        setTabs([
-            ...tabs,
-            { id: newId, title: "新しいタブ", content: null, TargetType: null }
-        ]);
-
+        setTabs([...tabs, { id: newId, title: "新しいタブ", content: null, TargetType: null }]);
         setFolderPaths((prev) => ({ ...prev, [newId]: null }));
         setCurrentTabId(newId); // 新しいタブをアクティブにする
     };
@@ -49,15 +45,38 @@ const DynamicTabs = () => {
             const folderPath = selected as string;
             const folderName = getFolderName(folderPath);
 
-            // タイトル（フォルダ名）とフォルダパスを更新
-            setFolderPaths((prev) => ({ ...prev, [tabId]: folderPath }));
-            setTabs((prevTabs) =>
-                prevTabs.map((tab) =>
-                    tab.id === tabId ? { ...tab, title: folderName } : tab
-                )
-            );
+            try {
+                // Rust側の `FindFolderType` を呼び出してフォルダの種類を取得
+                const folderType: string = await invoke("FindFolderType", { folderName: folderPath });
+                await invoke("greet", { name: folderPath });
 
-            console.log("選択されたフォルダ:", folderPath);
+                let targetType: TargetEnum | null = null;
+                switch (folderType) {
+                    case "IV":
+                        targetType = TargetEnum.IV;
+                        break;
+                    case "RT":
+                        targetType = TargetEnum.RT;
+                        break;
+                    case "Pulse":
+                        targetType = TargetEnum.Pulse;
+                        break;
+                    default:
+                        targetType = null;
+                }
+
+                setFolderPaths((prev) => ({ ...prev, [tabId]: folderPath }));
+                setTabs((prevTabs) =>
+                    prevTabs.map((tab) =>
+                        tab.id === tabId ? { ...tab, title: folderName, TargetType: targetType } : tab
+                    )
+                );
+
+                setCurrentTarget(targetType);
+            } catch (error) {
+                console.error("フォルダ判定エラー:", error);
+                alert("フォルダの種類を判定できませんでした。");
+            }
         }
     };
 
@@ -71,7 +90,6 @@ const DynamicTabs = () => {
         });
 
         if (id === currentTabId) {
-            // 現在のタブが削除された場合、最初のタブを選択
             setCurrentTabId(newTabs.length > 0 ? newTabs[0].id : "");
         }
     };
@@ -87,7 +105,6 @@ const DynamicTabs = () => {
     return (
         <div className="w-full mx-auto bg-[#1f1f23] text-white min-h-screen flex flex-col">
             <Tabs value={currentTabId} onValueChange={handleTabChange} className="h-full flex flex-col w-full">
-                {/* タブバー */}
                 <TabsList className="flex flex-glow bg-transparent rounded-t-lg w-full justify-start">
                     {tabs.map((tab) => (
                         <TabsTrigger
@@ -114,20 +131,22 @@ const DynamicTabs = () => {
 
                 <TopToolbar />
 
-                {/* サイドバーとコンテンツを横並びに配置 */}
                 <div className="flex flex-grow w-full">
                     <SideToolBarProvider>
                         <SideToolBar />
                     </SideToolBarProvider>
 
-                    {/* タブのコンテンツ */}
                     <div className="flex-grow p-4 bg-gray-900 text-white rounded-b-lg">
                         {tabs.map((tab) => (
                             <TabsContent key={tab.id} value={tab.id} className="h-full w-full">
-                                <div className="flex flex-col h-full justify-center items-center">
-                                    <Button onClick={() => handleOpenFolder(tab.id)}>フォルダを開く</Button>
-                                    {folderPaths[tab.id] && <p className="mt-2">選択されたフォルダ: {folderPaths[tab.id]}</p>}
-                                </div>
+                                {tab.TargetType === TargetEnum.IV && folderPaths[tab.id] ? (
+                                    <IVContent folderPath={folderPaths[tab.id]!} />
+                                ) : (
+                                    <div className="flex flex-col h-full justify-center items-center">
+                                        <Button onClick={() => handleOpenFolder(tab.id)}>フォルダを開く</Button>
+                                        {folderPaths[tab.id] && <p className="mt-2">選択されたフォルダ: {folderPaths[tab.id]}</p>}
+                                    </div>
+                                )}
                             </TabsContent>
                         ))}
                     </div>

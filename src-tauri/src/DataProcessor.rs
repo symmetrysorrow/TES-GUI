@@ -1,4 +1,3 @@
-use crate::TES_Err::TESErr;
 use ndarray::Array1;
 use std::convert::TryInto;
 use std::fmt::Display;
@@ -83,9 +82,9 @@ pub(crate) fn LoadTxt(file_path: &Path) -> Result<Array1<f64>, String> {
 pub(crate) enum FolderType{
     IV,RT,Pulse
 }
-
 #[command]
-pub(crate) fn FindFolderType(folder:&Path)->Result<FolderType,String>{
+pub fn FindFolderType(folderName:String)->Result<String,String>{
+    let folder = Path::new(&folderName);
     if !folder.exists() {
         return Err("Folder not found.".to_string());
     }
@@ -102,13 +101,13 @@ pub(crate) fn FindFolderType(folder:&Path)->Result<FolderType,String>{
             entry.file_name().to_string_lossy()[..entry.file_name().len()-2].chars().all(char::is_numeric));
 
     if IsIV{
-        return Ok(FolderType::IV);
+        return Ok("IV".to_string());
     }
 
     let IsRT=folder.join("rawdata").exists();
 
     if IsRT{
-        return Ok(FolderType::RT);
+        return Ok("RT".to_string());
     }
 
     let IsPulse=fs::read_dir(folder)
@@ -123,7 +122,7 @@ pub(crate) fn FindFolderType(folder:&Path)->Result<FolderType,String>{
         });
 
     if IsPulse{
-        return Ok(FolderType::Pulse);
+        return Ok("Pulse".to_string());
     }
 
     return Err("Not TES-related folder.".to_string());

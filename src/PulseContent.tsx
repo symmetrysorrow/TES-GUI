@@ -1,15 +1,15 @@
-import { useEffect ,useRef} from "react";
+import {useEffect, useRef} from "react";
 
-type IVContentProps = {
+type PulseContentProps = {
     folderPath: string;
 };
 
-const IVContent: React.FC<IVContentProps> = ({ folderPath }) => {
+const PulseContent: React.FC<PulseContentProps> = ({ folderPath }) => {
     const mounted = useRef(false);
 
     useEffect(() => {
         if (mounted.current) {
-            console.log("IVContent: フォルダパスが変更されました:", folderPath);
+            console.log("PulseContent: フォルダパスが変更されました:", folderPath);
         } else {
             mounted.current = true;
         }
@@ -17,10 +17,10 @@ const IVContent: React.FC<IVContentProps> = ({ folderPath }) => {
 
     return (
         <div>
-            <h2>IV 測定データ</h2>
+            <h2>Pulse 測定データ</h2>
             <p>選択されたフォルダ: {folderPath}</p>
         </div>
     );
 };
 
-export default IVContent;
+export default PulseContent;

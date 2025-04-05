@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import IVContent from "@/IVContent";
+import PulseContent from "@/PulseContent";
+import RTContent from "@/RTContent.tsx";
 
 type TabItem = {
     id: string;
@@ -139,14 +141,24 @@ const DynamicTabs = () => {
                     <div className="flex-grow p-4 bg-gray-900 text-white rounded-b-lg">
                         {tabs.map((tab) => (
                             <TabsContent key={tab.id} value={tab.id} className="h-full w-full">
-                                {tab.TargetType === TargetEnum.IV && folderPaths[tab.id] ? (
-                                    <IVContent folderPath={folderPaths[tab.id]!} />
-                                ) : (
-                                    <div className="flex flex-col h-full justify-center items-center">
-                                        <Button onClick={() => handleOpenFolder(tab.id)}>フォルダを開く</Button>
-                                        {folderPaths[tab.id] && <p className="mt-2">選択されたフォルダ: {folderPaths[tab.id]}</p>}
-                                    </div>
-                                )}
+                                {(() => {
+                                    const folderPath = folderPaths[tab.id];
+                                    switch (tab.TargetType) {
+                                        case TargetEnum.IV:
+                                            return folderPath ? <IVContent folderPath={folderPath} /> : null;
+                                        case TargetEnum.RT:
+                                            return folderPath ? <RTContent folderPath={folderPath} /> : null;
+                                        case TargetEnum.Pulse:
+                                            return folderPath ? <PulseContent folderPath={folderPath} /> : null;
+                                        default:
+                                            return (
+                                                <div className="flex flex-col h-full justify-center items-center">
+                                                    <Button onClick={() => handleOpenFolder(tab.id)}>フォルダを開く</Button>
+                                                    {folderPath && <p className="mt-2">選択されたフォルダ: {folderPath}</p>}
+                                                </div>
+                                            );
+                                    }
+                                })()}
                             </TabsContent>
                         ))}
                     </div>

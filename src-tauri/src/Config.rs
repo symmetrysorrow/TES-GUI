@@ -18,14 +18,14 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize,PartialEq)]
-pub(crate) struct TESAnalysisConfig {
-    pub(crate) R_sh: f64,
-    pub(crate) LinerFitSample:u32,
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub struct TESAnalysisConfig {
+    pub R_sh: f64,
+    pub LinerFitSample:u32,
 }
 
 impl TESAnalysisConfig{
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             R_sh: 3.9,
             LinerFitSample: 10,
@@ -33,26 +33,26 @@ impl TESAnalysisConfig{
     }
 }
 #[derive(Debug, Clone,Serialize, Deserialize,PartialEq)]
-pub(crate) struct PulseAnalysisConfig {
-    pub(crate) CutoffFrequency: f64,
+pub struct PulseAnalysisConfig {
+    pub CutoffFrequency: f64,
     #[serde(deserialize_with = "float_to_u32")]
-    pub(crate) BaseLinePreSample: u32,
+    pub BaseLinePreSample: u32,
     #[serde(deserialize_with = "float_to_u32")]
-    pub(crate) BaseLinePostSample: u32,
+    pub BaseLinePostSample: u32,
     #[serde(deserialize_with = "float_to_u32")]
-    pub(crate) PeakSearchSample: u32,
+    pub PeakSearchSample: u32,
     #[serde(deserialize_with = "float_to_u32")]
-    pub(crate) PeakAveragePreSample: u32,
+    pub PeakAveragePreSample: u32,
     #[serde(deserialize_with = "float_to_u32")]
-    pub(crate) PeakAveragePostSample: u32,
-    pub(crate) RiseHighRatio: f64,
-    pub(crate) RiseLowRatio: f64,
-    pub(crate) DecayHighRatio: f64,
-    pub(crate) DecayLowRatio: f64,
+    pub PeakAveragePostSample: u32,
+    pub RiseHighRatio: f64,
+    pub RiseLowRatio: f64,
+    pub DecayHighRatio: f64,
+    pub DecayLowRatio: f64,
 }
 
 impl PulseAnalysisConfig {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             CutoffFrequency: 0.0,
             BaseLinePreSample: 0,
@@ -71,16 +71,16 @@ impl PulseAnalysisConfig {
 
 
 #[derive(Debug, Clone,Serialize, Deserialize,PartialEq)]
-pub(crate) struct PulseReadoutConfig {
+pub struct PulseReadoutConfig {
     #[serde(deserialize_with = "float_to_u32")]
-    pub(crate) Sample: u32,
+    pub Sample: u32,
     #[serde(deserialize_with = "float_to_u32")]
-    pub(crate) PreSample: u32,
-    pub(crate) Rate: f64,
+    pub PreSample: u32,
+    pub Rate: f64,
 }
 
 impl PulseReadoutConfig {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             Sample: 0,
             PreSample: 0,
@@ -90,16 +90,7 @@ impl PulseReadoutConfig {
 }
 
 #[derive(Debug,Clone,Serialize,  Deserialize,PartialEq)]
-pub(crate) struct PulseProcessorConfig {
-    pub(crate) Readout: PulseReadoutConfig,
-    pub(crate) Analysis: PulseAnalysisConfig,
-}
-
-impl PulseProcessorConfig {
-    pub(crate) fn new() -> Self {
-        Self {
-            Readout: PulseReadoutConfig::new(),
-            Analysis: PulseAnalysisConfig::new(),
-        }
-    }
+pub struct PulseProcessorConfig {
+    pub Readout: PulseReadoutConfig,
+    pub Analysis: PulseAnalysisConfig,
 }

@@ -13,18 +13,11 @@ impl PyManager {
         }
     }
 
-    pub(crate) fn SetPath(&mut self, path: PathBuf) {
-        self.PyPath = path;
-    }
-
     pub(crate) fn ExePath(&self) -> String {
         format!("{}/python.exe",&self.PyPath.to_str().expect("Failed to execute command"))
     }
 
     pub(crate) fn RunScript(&self, script: String) -> Result<String, String> {
-        // 実行するコマンドを表示
-        let command = format!("{} -c {}", self.ExePath(), script);
-        //println!("Executing command: {}", command);
 
         // コマンドを実行
         let output: Output = Command::new(self.ExePath())
@@ -56,13 +49,6 @@ impl PyManager {
         } else {
             Err("File is not a Python file".to_string())
         }
-    }
-
-    pub(crate) fn Install(&self,package:String){
-        let output = Command::new(self.ExePath())
-            .args(["-m", "pip", "install", &format!("--target={}/Lib/site-packages",&self.PyPath.to_str().expect("")), &package])
-            .output()
-            .expect("Failed to execute command");
     }
 
 }

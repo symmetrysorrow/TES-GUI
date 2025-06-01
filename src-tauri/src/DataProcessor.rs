@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use ndarray::Array1;
 use std::convert::TryInto;
 use std::fmt::Display;
@@ -6,13 +7,13 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
 use std::mem::size_of;
 use std::path::{Path, PathBuf};
-use tauri::command;
 
-pub(crate) struct DataProcessorS {
-    pub(crate) DataPath: PathBuf
+#[derive(Debug)]
+pub struct DataProcessorS {
+    pub DataPath: PathBuf
 }
 
-pub(crate) trait DataProcessorT {
+pub trait DataProcessorT {
     fn AnalyzeFolder(&mut self) -> Result<(), String>;
 }
 
@@ -20,7 +21,7 @@ pub(crate) fn SaveTxt<T: Display>(path: &Path, data: &[T]) -> Result<(), String>
     // 必要なディレクトリを作成（中間ディレクトリも含む）
     if let Some(parent_dir) = path.parent() {
         fs::create_dir_all(parent_dir)
-            .map_err(|e|e.to_string())?;
+            .map_err(|e|format!("Failed to create {:?}.\n{}",parent_dir,e))?;
     }
 
     let content = data.iter()
@@ -30,24 +31,24 @@ pub(crate) fn SaveTxt<T: Display>(path: &Path, data: &[T]) -> Result<(), String>
 
     // ファイルを書き込む
     fs::write(path, content)
-        .map_err(|e|e.to_string())
+        .map_err(|e|format!("Failed to write {:?}.\n{}",path.display(),e))
 }
 
 /// バイナリファイルを読み込むメソッド
 pub(crate) fn LoadBi(file_path: &Path) -> Result<Array1<f64>, String> {
     // ファイルをバイナリモードで開く
-    let mut file = File::open(file_path).map_err(|e|e.to_string())?;
+    let mut file = File::open(file_path).map_err(|e|format!("Failed to open {:?}\n{}",file_path,e))?;
 
     // 最初の4バイトをスキップ
-    file.seek(SeekFrom::Start(4)).map_err(|e|e.to_string())?;
+    file.seek(SeekFrom::Start(4)).map_err(|e|format!("Failed in seeking binary\n{}",e))?;
 
     // ファイルの内容をバイナリデータとして読み込む
     let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).map_err(|e|e.to_string())?;
+    file.read_to_end(&mut buffer).map_err(|e|format!("Failed to read {}.\n{}",file_path.display(),e))?;
 
     // バッファサイズを確認
     if buffer.len() % size_of::<f64>() != 0 {
-        return Err("buffer size is not adequate.".to_string());
+        return Err(format!("{} is not a multiple of 64 floating point number.",file_path.display()));
     }
 
     // バッファを f64 のベクターに変換
@@ -64,7 +65,7 @@ pub(crate) fn LoadBi(file_path: &Path) -> Result<Array1<f64>, String> {
 /// テキストファイルを読み込むメソッド
 
 pub(crate) fn LoadTxt(file_path: &Path) -> Result<Array1<f64>, String> {
-    let file = File::open(file_path).map_err(|e|e.to_string())?;
+    let file = File::open(file_path).map_err(|e|format!("Failed to open {:?}\n{}",file_path,e))?;
     let reader = BufReader::new(file);
     let mut result = Vec::new();
 
@@ -78,15 +79,13 @@ pub(crate) fn LoadTxt(file_path: &Path) -> Result<Array1<f64>, String> {
     return Ok(Array1::from(result));
 }
 
-#[derive(Debug, serde::Serialize)]
-pub(crate) enum FolderType{
+pub enum FolderType{
     IV,RT,Pulse
 }
-#[command]
-pub fn FindFolderType(folderString:String)->Result<String,String>{
-    let folder = Path::new(&folderString);
+
+pub fn FindFolderType(folder:&Path)->Result<FolderType,String>{
     if !folder.exists() {
-        return Err("Folder not found.".to_string());
+        return Err(folder.to_string_lossy().to_string());
     }
     if !folder.is_dir() {
         return Err("Not a folder.".to_string());
@@ -101,13 +100,13 @@ pub fn FindFolderType(folderString:String)->Result<String,String>{
             entry.file_name().to_string_lossy()[..entry.file_name().len()-2].chars().all(char::is_numeric));
 
     if IsIV{
-        return Ok("IV".to_string());
+        return Ok(FolderType::IV);
     }
 
     let IsRT=folder.join("rawdata").exists();
 
     if IsRT{
-        return Ok("RT".to_string());
+        return Ok(FolderType::RT);
     }
 
     let IsPulse=fs::read_dir(folder)
@@ -122,10 +121,11 @@ pub fn FindFolderType(folderString:String)->Result<String,String>{
         });
 
     if IsPulse{
-        return Ok("Pulse".to_string());
+        return Ok(FolderType::Pulse);
     }
 
-    return Err("Not TES-related folder.".to_string());
+
+    return Err(folder.to_string_lossy().to_string());
 }
 
 impl DataProcessorS {
@@ -137,11 +137,10 @@ impl DataProcessorS {
     }
 
     /// ファイルパスを設定
-    pub(crate) fn SetDataPath(&mut self, path: String)->Result<(),String> {
-        self.DataPath = Path::new(&path).to_path_buf();
+    pub(crate) fn SetDataPath(&mut self, path: &Path) {
+        self.DataPath = path.to_path_buf();
         if !self.DataPath.exists() {
-            return Err(format!("Path {} not found.", path).to_string());
+            panic!("File not found: {}", self.DataPath.display());
         }
-        Ok(())
     }
 }

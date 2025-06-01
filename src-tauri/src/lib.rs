@@ -1,10 +1,10 @@
 #![allow(nonstandard_style)]
-
-mod PulseProcessor;
-mod TESAnalyzer;
-mod DataProcessor;
-mod PyMod;
-mod Config;
+pub mod DataProcessor;
+pub mod TESAnalyzer;
+pub mod Config;
+pub mod PulseProcessor;
+pub mod TabManager;
+pub mod PyMod;
 
 use std::sync::Mutex;
 
@@ -45,27 +45,6 @@ pub fn run() {
         // ✅ すべてのコマンドをここでまとめて指定
         .invoke_handler(tauri::generate_handler![
             greet,
-            DataProcessor::FindFolderType,
-
-            // PulseProcessor commands
-            PulseProcessor::CreatePulseProcessor,
-            PulseProcessor::DeletePulseProcessor,
-            PulseProcessor::PPAnalyzeFolderCommand,
-            PulseProcessor::PPSetDataPathCommand,
-
-            // IV commands
-            TESAnalyzer::IV::CreateIVProcessor,
-            TESAnalyzer::IV::DeleteIVProcessor,
-            TESAnalyzer::IV::IVAnalyzeFolderCommand,
-            TESAnalyzer::IV::IVSetDataPathCommand,
-            TESAnalyzer::IV::SingleCalibCommand,
-            TESAnalyzer::IV::MultipleCalibCommand,
-
-            // RT commands
-            TESAnalyzer::RT::CreateRTProcessor,
-            TESAnalyzer::RT::DeleteRTProcessor,
-            TESAnalyzer::RT::RTAnalyzeFolderCommand,
-            TESAnalyzer::RT::RTSetDataPathCommand
         ])
 
         // 実行

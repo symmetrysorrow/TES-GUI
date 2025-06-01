@@ -1,7 +1,8 @@
+#![allow(non_snake_case)]
 use ndarray::Array1;
 
-pub(crate) mod IV;
-pub(crate) mod RT;
+pub mod IV;
+pub mod RT;
 
 pub(crate) fn LinerFit(x: &Array1<f64>, y: &Array1<f64>) -> Result<f64, String> {
     let n = x.len() as f64;
@@ -13,7 +14,7 @@ pub(crate) fn LinerFit(x: &Array1<f64>, y: &Array1<f64>) -> Result<f64, String> 
 
     let denominator = n * sum_xx - sum_x * sum_x;
     if denominator.abs() < 1e-10 {
-        return Err("Too small denominator".to_string());
+        return Err("Failed to compute LinerFit".into());
     }
 
     let a = (n * sum_xy - sum_x * sum_y) / denominator;

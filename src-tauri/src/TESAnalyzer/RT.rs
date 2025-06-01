@@ -9,27 +9,25 @@ use glob::glob;
 use ndarray::Array1;
 use regex::Regex;
 use serde_json::json;
+use serde_json::{to_string_pretty};
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
-use std::net::ToSocketAddrs;
 use std::path::{Path, PathBuf};
-use tauri::{command, State};
-use crate::RTState;
-
 const sup_R:f64=90.0;
 const inf_R:f64=10.0;
 
-pub(crate) struct RTProcessorS{
+
+pub struct RTProcessorS{
     DP:DataProcessorS,
     TESAConfig:TESAnalysisConfig,
-    Currents:HashSet<u32>,
-    R_tes_Current:HashMap<u32, Vec<f64>>,
-    Temp_Current:HashMap<u32, Vec<f64>>,
+    pub Currents:HashSet<u32>,
+    pub R_tes_Current:HashMap<u32, Vec<f64>>,
+    pub Temp_Current:HashMap<u32, Vec<f64>>,
     eta:f64
 }
 
 impl RTProcessorS {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             DP: DataProcessorS::new(),
             TESAConfig: TESAnalysisConfig::new(),
@@ -40,14 +38,14 @@ impl RTProcessorS {
         }
     }
 
-    pub(crate) fn SetDataPath(&mut self, path: String) ->Result<(), String> {
-        self.DP.SetDataPath(path)
+    pub fn SetDataPath(&mut self, path: &Path) {
+        self.DP.SetDataPath(path);
     }
 
-    pub(crate) fn SaveRT(&self) -> Result<(), String> {
+    pub fn SaveRT(&self) -> Result<(), String> {
         for ch in self.Currents.iter(){
-            let R=self.R_tes_Current.get(ch).ok_or("Map get err.".to_string())?;
-            let T=self.Temp_Current.get(ch).ok_or("Map get err".to_string())?;
+            let R=self.R_tes_Current.get(ch).ok_or(format!("Failed to get R at {}microA",ch))?;
+            let T=self.Temp_Current.get(ch).ok_or(format!("Failed to get T at {}microA",ch))?;
             let mut RTData=Vec::new();
             RTData.push("T,R".to_string());
             for i in 0..R.len(){
@@ -59,33 +57,33 @@ impl RTProcessorS {
         return Ok(());
     }
 
-    pub(crate) fn FitRT(&mut self) -> Result<(), String> {
+    pub fn FitRT(&mut self) -> Result<(), String> {
 
         let py= PyManager::new(PathBuf::from(format!("{}/python-emb", std::env::current_dir()
-            .map_err(|e|e.to_string())?.
+            .map_err(|_|"PythonErr".to_string())?.
             to_str().
-            ok_or("To Str Error.")?)));
+            ok_or("Failed to Convert PyResult")?)));
 
         for crt in self.Currents.iter(){
             if *crt==0{
                 continue;
             }
-            let R=self.R_tes_Current.get(crt).ok_or("Map get error.".to_string())?;
-            let T=self.Temp_Current.get(crt).ok_or("Map get error.".to_string())?;
+            let R=self.R_tes_Current.get(crt).ok_or(format!("Failed to get R at {}microA",crt))?;
+            let T=self.Temp_Current.get(crt).ok_or(format!("Failed to get R at {}microA",crt))?;
 
             let InputData = json!({
                 "R": R,
                 "T": T,
             });
 
-            let args_b=vec![serde_json::to_string(&InputData).map_err(|e|e.to_string())?];
+            let args_b=vec![serde_json::to_string(&InputData).map_err(|e|format!("Failed to parse json\n{}",e))?];
 
             let FitParams = py
                 .RunMainFromFile(PathBuf::from("RTFit.py"), args_b, "PyScript".to_string())
-                .map_err(|e|e.to_string())
+                .map_err(|_|"PyErr".to_string())
                 .and_then(|output| {
                     serde_json::from_str::<Vec<f64>>(&output)
-                        .map_err(|e| e.to_string())
+                        .map_err(|e| format!("Bessel.py:{}", e))
                 })?; // `?` を使い、エラーが発生したら即リターン
 
             let R_n_s=R[0];
@@ -145,24 +143,24 @@ impl DataProcessorT for RTProcessorS{
     fn AnalyzeFolder(&mut self) -> Result<(), String> {
 
         let RTFiles=glob(&format!("{}/rawdata/CH*.dat", self.DP.DataPath.display()))
-            .map_err(|e|e.to_string())?
+            .map_err(|e|format!("Failed to glob RT files at {:?}\n{}",self.DP.DataPath,e))?
             .filter_map(Result::ok)
             .collect::<Vec<PathBuf>>();
 
         if RTFiles.is_empty() {
-            return Err("No files found in the specified directory.".to_string());
+            return Err("RTFiles is empty".to_string());
         }
 
-        let RTPattern = Regex::new(r"_(\d+)mK_(\d+)uA\.dat").map_err(|e| e.to_string())?;
+        let RTPattern = Regex::new(r"_(\d+)mK_(\d+)uA\.dat").map_err(|e|format!("Regex Error\n{}",e))?;
 
         let mut V_out_current:HashMap<u32,Vec<f64>>=HashMap::new();
 
         for file in RTFiles {
-            let V_out=LoadTxt(file.as_path())?.mean().ok_or("Ndarray mean error".to_string())?;
+            let V_out=LoadTxt(file.as_path())?.mean().ok_or("Failed to calculate mean of ndarray.")?;
             let file_str=file.to_string_lossy();
             if let Some(captures) = RTPattern.captures(&file_str) {
-                let temp = captures[1].parse::<f64>().map_err(|e| e.to_string())?;
-                let current = captures[2].parse::<u32>().map_err(|e| e.to_string())?;
+                let temp = captures[1].parse::<f64>().map_err(|e|format!("Regex Error\n{}",e))?;
+                let current = captures[2].parse::<u32>().map_err(|e|format!("Regex Error\n{}",e))?;
                 self.Currents.insert(current);
                 self.Temp_Current.entry(current)
                     .or_insert_with(Vec::new)
@@ -180,9 +178,6 @@ impl DataProcessorT for RTProcessorS{
         self.eta=1.0/LinerFit(&Array1::from(I_bias_sample), &Array1::from(V_out_sample))?;
         
         for cur in self.Currents.iter(){
-            if *cur==0{
-                continue;
-            }
             for i in 0..V_out_current.get(cur).unwrap().len() {
                 let V_out = V_out_current.get(cur).unwrap()[i] - V_out_current.get(&0).unwrap()[i];
                 let R_tes = self.TESAConfig.R_sh * (*cur as f64 / (self.eta * V_out) - 1.0);
@@ -194,51 +189,16 @@ impl DataProcessorT for RTProcessorS{
         }
         
         if cfg!(debug_assertions) {
-            println!("Currents: {:?}", self.Currents);
+            //println!("Currents: {:?}", self.Currents);
+            let R_TES = to_string_pretty(&self.R_tes_Current).unwrap();
+            let temp=to_string_pretty(&self.Temp_Current).unwrap();
+            //println!("R_tes_Current: {}", R_TES);
+            //println!("Temp_Current: {}", temp);
+           // println!("eta: {}", self.eta);       
         }
+
+        self.SaveRT()?;
 
         return Ok(());
     }
 }
-
-#[tauri::command]
-pub fn CreateRTProcessor(state:State<RTState>)->Result<(), String>{
-    let mut rt_processor = state.RTProcessor.lock().map_err(|e| e.to_string())?;
-    if rt_processor.is_some() {
-        return Err("RTProcessorS is already created".to_string());
-    }
-    *rt_processor = Some(RTProcessorS::new());
-    Ok(())
-}
-
-#[tauri::command]
-pub fn DeleteRTProcessor(state:State<RTState>)->Result<(), String>{
-    let mut rt_processor = state.RTProcessor.lock().map_err(|e| e.to_string())?;
-    if rt_processor.is_none() {
-        return Err("RTProcessorS is not initialized".to_string());
-    }
-    *rt_processor = None;
-    Ok(())
-}
-
-#[command]
-pub fn RTAnalyzeFolderCommand(state: State<RTState>) -> Result<(), String> {
-    let mut rt_processor = state.RTProcessor.lock().map_err(|e| e.to_string())?;
-    if let Some(rt_processor) = rt_processor.as_mut() {
-        rt_processor.AnalyzeFolder()
-    } else {
-        Err("RTProcessorS is not initialized".to_string())
-    }
-}
-
-#[command]
-pub fn RTSetDataPathCommand(state:State<RTState>,path:String) -> Result<(), String> {
-    let mut rt_processor = state.RTProcessor.lock().map_err(|e| e.to_string())?;
-    if let Some(rt_processor) = rt_processor.as_mut() {
-        rt_processor.SetDataPath(path)
-    } else {
-        Err("RTProcessorS is not initialized".to_string())
-    }
-}
-
-

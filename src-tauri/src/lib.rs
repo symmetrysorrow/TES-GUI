@@ -1,23 +1,13 @@
 #![allow(nonstandard_style)]
+
+use crate::TabManager::{AnalyzeFolder, CalibrateMultipleJumpCommand, CalibrateSingleJumpCommand, FitRTCommand, GetIVCommand, GetPulseAnalysisCommand, GetPulseInfoCommand, GetRTCommand, RegisterProcessor, SaveCalibratedCommand, SetDataPath, UnregisterProcessor};
+
 pub mod DataProcessor;
 pub mod TESAnalyzer;
 pub mod Config;
 pub mod PulseProcessor;
 pub mod TabManager;
 pub mod PyMod;
-
-use std::sync::Mutex;
-
-// 状態管理構造体
-struct RTState {
-    RTProcessor: Mutex<Option<TESAnalyzer::RT::RTProcessorS>>,
-}
-struct IVState {
-    IVProcessor: Mutex<Option<TESAnalyzer::IV::IVProcessorS>>,
-}
-struct PulseState {
-    PulseProcessor: Mutex<Option<PulseProcessor::PulseProcessorS>>,
-}
 
 // Tauri コマンドの例
 #[tauri::command]
@@ -30,23 +20,22 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-
-        // 状態の管理
-        .manage(PulseState {
-            PulseProcessor: Mutex::new(None),
-        })
-        .manage(IVState {
-            IVProcessor: Mutex::new(None),
-        })
-        .manage(RTState {
-            RTProcessor: Mutex::new(None),
-        })
-
         // ✅ すべてのコマンドをここでまとめて指定
         .invoke_handler(tauri::generate_handler![
             greet,
+            RegisterProcessor,
+            UnregisterProcessor,
+            SetDataPath,
+            AnalyzeFolder,
+            SaveCalibratedCommand,
+            CalibrateSingleJumpCommand,
+            CalibrateMultipleJumpCommand,
+            GetIVCommand,
+            FitRTCommand,
+            GetRTCommand,
+            GetPulseInfoCommand,
+            GetPulseAnalysisCommand,
         ])
-
         // 実行
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

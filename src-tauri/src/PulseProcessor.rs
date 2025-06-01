@@ -1,29 +1,16 @@
 #![allow(non_snake_case)]
 use crate::Config::{PulseAnalysisConfig, PulseProcessorConfig, PulseReadoutConfig};
 use crate::DataProcessor::{DataProcessorS, DataProcessorT, LoadBi};
-use crate::PyMod::PyManager;
 use biquad::{Biquad, Coefficients, DirectForm2Transposed};
 use glob::glob;
 use ndarray::{s, Array1};
+use crate::PyMod::BesselCoefficients;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use serde::Serialize;
-
-fn BesselCoefficients(rate:f64,fs:f64)->Result<Vec<Vec<f64>>,String>{
-    let py = PyManager::new(PathBuf::from(format!("{}/python-emb", std::env::current_dir()
-        .map_err(|_|"PythonErr".to_string())?.
-        to_str().
-        ok_or("ToStr".to_string())?)));
-    let be=PathBuf::from("Bessel.py");
-    let args_b=vec![rate.to_string(),fs.to_string()];
-    return match py.RunMainFromFile(be, args_b, "PyScript".to_string()) {
-        Ok(output) => serde_json::from_str::<Vec<Vec<f64>>>(output.as_str()).map_err(|e| format!("{}", e)),
-        Err(_) => Err("PyErr".to_string()),
-    }
-}
 
 fn ApplyFilter(coefficients: Coefficients<f64>, signal: &Vec<f64>) -> Vec<f64> {
     let mut filter = DirectForm2Transposed::<f64>::new(coefficients);
@@ -236,7 +223,9 @@ impl PulseProcessorS{
             
         let mut PulseInfos:HashMap<u32,PulseInfoS>=HashMap::new();
 
-        self.BesselCoeffs=BesselCoefficients(self.PRConfig.Rate,self.PAConfig.CutoffFrequency)?;
+        let rt = tokio::runtime::Runtime::new().unwrap();
+
+        self.BesselCoeffs=rt.block_on(BesselCoefficients(self.PRConfig.Rate,self.PAConfig.CutoffFrequency))?;
             
         for (Num,Path) in Numbers.iter().zip(PulsePaths.iter()){
             let Pulse=LoadBi(&Path)?;

@@ -3,12 +3,11 @@
 use crate::Config::TESAnalysisConfig;
 use crate::DataProcessor::{DataProcessorS, DataProcessorT};
 use crate::DataProcessor::{LoadTxt, SaveTxt};
-use crate::PyMod::PyManager;
+use crate::PyMod::RTFit;
 use crate::TESAnalyzer::LinerFit;
 use glob::glob;
 use ndarray::Array1;
 use regex::Regex;
-use serde_json::json;
 use serde_json::{to_string_pretty};
 use std::collections::{HashMap, HashSet};
 use std::f64::consts::PI;
@@ -58,12 +57,7 @@ impl RTProcessorS {
     }
 
     pub fn FitRT(&mut self) -> Result<(), String> {
-
-        let py= PyManager::new(PathBuf::from(format!("{}/python-emb", std::env::current_dir()
-            .map_err(|_|"PythonErr".to_string())?.
-            to_str().
-            ok_or("Failed to Convert PyResult")?)));
-
+        let rt = tokio::runtime::Runtime::new().unwrap();
         for crt in self.Currents.iter(){
             if *crt==0{
                 continue;
@@ -71,20 +65,7 @@ impl RTProcessorS {
             let R=self.R_tes_Current.get(crt).ok_or(format!("Failed to get R at {}microA",crt))?;
             let T=self.Temp_Current.get(crt).ok_or(format!("Failed to get R at {}microA",crt))?;
 
-            let InputData = json!({
-                "R": R,
-                "T": T,
-            });
-
-            let args_b=vec![serde_json::to_string(&InputData).map_err(|e|format!("Failed to parse json\n{}",e))?];
-
-            let FitParams = py
-                .RunMainFromFile(PathBuf::from("RTFit.py"), args_b, "PyScript".to_string())
-                .map_err(|_|"PyErr".to_string())
-                .and_then(|output| {
-                    serde_json::from_str::<Vec<f64>>(&output)
-                        .map_err(|e| format!("Bessel.py:{}", e))
-                })?; // `?` を使い、エラーが発生したら即リターン
+            let FitParams = rt.block_on(RTFit(R, T))?;
 
             let R_n_s=R[0];
             let R_n_f=R[R.len() - 1];

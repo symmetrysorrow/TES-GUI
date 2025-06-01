@@ -1,55 +1,46 @@
-use std::path::{PathBuf};
-use std::process::{Command, Output};
+use reqwest::Client;
+use serde_json::json;
 
-pub(crate) struct PyManager {
-    PyPath: PathBuf
+pub async fn BesselCoefficients(rate:f64, fs:f64) ->Result<Vec<Vec<f64>>,String>{
+    let client = Client::new();
+    let url = "https://tes-gui-pyhelper.onrender.com/Bessel";
+
+    let res = client.post(url)
+        .json(&json!({ "rate": rate, "fs": fs }))
+        .send().await.map_err(|e|format!("Failed to get response: {}", e))?;
+
+    let json: serde_json::Value = res.json().await.map_err(|e|format!("Failed to execute Python command: {}", e))?;
+    let a = json["a"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect::<Vec<f64>>();
+
+    let b = json["b"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect::<Vec<f64>>();
+
+    return Ok(vec![a, b]);
 }
 
-#[allow(non_snake_case)]
-impl PyManager {
-    pub(crate) fn new(path:PathBuf) -> PyManager {
-        PyManager {
-            PyPath: path
-        }
-    }
+pub async fn RTFit(R:&Vec<f64>,T:&Vec<f64>) -> Result<Vec<f64>,String>{
+    let client = Client::new();
+    let url = "https://tes-gui-pyhelper.onrender.com/RTFit";
 
-    pub(crate) fn ExePath(&self) -> String {
-        format!("{}/python.exe",&self.PyPath.to_str().expect("Failed to execute command"))
-    }
+    let res = client.post(url)
+        .json(&json!({ "R": R, "T": T }))
+        .send().await.map_err(|e|format!("Failed to get response: {}", e))?;
 
-    pub(crate) fn RunScript(&self, script: String) -> Result<String, String> {
+    let json: serde_json::Value = res.json().await.map_err(|e|format!("Failed to execute Python command: {}", e))?;
+    let result = json.as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_f64().unwrap())
+        .collect::<Vec<f64>>();
 
-        // コマンドを実行
-        let output: Output = Command::new(self.ExePath())
-            .args(["-c", &script])
-            .output()
-            .map_err(|e| format!("Failed to execute command: {}", e))?;
-
-        // エラーチェック
-        if !output.status.success() {
-            let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(format!("Python script failed with error: {}", error_msg));
-        }
-
-        // 標準出力を返す
-        let result = String::from_utf8_lossy(&output.stdout).to_string();
-        Ok(result)
-    }
-
-    pub(crate) fn RunMainFromFile(&self, FileName:PathBuf,Args:Vec<String>,ScriptPath:String) -> Result<String, String> {
-        let ScriptPathBuf = PathBuf::from(ScriptPath.as_str());
-        if FileName.extension().map(|e| e == "py").unwrap_or(true) && ScriptPathBuf.join(&FileName).exists() {
-            let Args_str = Args.iter().map(|arg| arg.to_string()).collect::<Vec<String>>().join(", ");
-
-            let Command=format!(
-                "from {}.Convert import Conv;from {}.{} import main;import json;print(json.dumps(Conv(main({}))))",ScriptPathBuf.to_str().unwrap(),ScriptPathBuf.to_str().unwrap(),FileName.file_stem().unwrap().to_str().unwrap(),Args_str
-            );
-
-            self.RunScript(Command)
-        } else {
-            Err("File is not a Python file".to_string())
-        }
-    }
-
+    return Ok(result);
 }
-

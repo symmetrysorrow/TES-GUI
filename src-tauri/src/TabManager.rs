@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 use std::collections::HashMap;
-use std::path::{Path,PathBuf};
+use std::fs;
+use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use ndarray::Array1;
 use crate::DataProcessor::{DataProcessorT, LoadBi};
@@ -19,32 +20,32 @@ pub static PROCESSORS: LazyLock<Mutex<HashMap<String, TabProcessor>>> = LazyLock
 });
 
 #[tauri::command]
-pub fn RegisterProcessor(tab_name: String, processor_type: String) -> Result<(), String> {
+pub fn RegisterProcessor(TabName: String, ProcessorType: String) -> Result<(), String> {
     let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
 
-    if map.contains_key(&tab_name) {
-        return Err(format!("Tab '{}' already registered", tab_name));
+    if map.contains_key(&TabName) {
+        return Err(format!("Tab '{}' already registered", TabName));
     }
 
-    let processor = match processor_type.as_str() {
+    let processor = match ProcessorType.as_str() {
         "IV" => TabProcessor::IV(IVProcessorS::new()),
         "RT" => TabProcessor::RT(RTProcessorS::new()),
         "Pulse" => TabProcessor::Pulse(PulseProcessorS::new()),
-        _ => return Err(format!("Unknown processor type: {}", processor_type)),
+        _ => return Err(format!("Unknown processor type: {}", ProcessorType)),
     };
 
-    map.insert(tab_name, processor);
+    map.insert(TabName, processor);
     Ok(())
 }
 
 #[tauri::command]
-pub fn UnregisterProcessor(tab_name: String) -> Result<(), String> {
+pub fn UnregisterProcessor(TabName: String) -> Result<(), String> {
     let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
 
-    if map.remove(&tab_name).is_some() {
+    if map.remove(&TabName).is_some() {
         Ok(())
     } else {
-        Err(format!("Tab '{}' not found", tab_name))
+        Err(format!("Tab '{}' not found", TabName))
     }
 }
 
@@ -82,50 +83,96 @@ impl TabProcessor {
 }
 
 #[tauri::command]
-pub fn SetDataPath(tab_name: String, path: String) -> Result<(), String> {
+pub fn FindFolderType(folder:String)->Result<String,String>{
+    let path=Path::new(&folder);
+    if !path.exists() {
+        return Err(path.to_string_lossy().to_string());
+    }
+    if !path.is_dir() {
+        return Err("Not a folder.".to_string());
+    }
+
+    let IsIV=fs::read_dir(path)
+        .ok()
+        .into_iter()
+        .flat_map(|entries| entries.filter_map(Result::ok))
+        .filter(|entry| entry.path().is_dir())
+        .any(|entry| entry.file_name().to_string_lossy().ends_with("mK") &&
+            entry.file_name().to_string_lossy()[..entry.file_name().len()-2].chars().all(char::is_numeric));
+
+    if IsIV{
+        return Ok("IV".to_string());
+    }
+
+    let IsRT=path.join("rawdata").exists();
+
+    if IsRT{
+        return Ok("RT".to_string());
+    }
+
+    let IsPulse=fs::read_dir(path)
+        .ok()
+        .into_iter()
+        .flat_map(|entries| entries.filter_map(Result::ok))
+        .filter(|entry| entry.path().is_dir())  // ディレクトリのみ対象
+        .any(|entry| {
+            let name = entry.file_name().to_string_lossy().into_owned(); // `String` として所有権を取得
+            name.starts_with("CH") && name.ends_with("_pulse") &&
+                name[2..name.len() - 6].chars().all(char::is_numeric) // "CH"の後と"_pulse"の前が数字
+        });
+
+    if IsPulse{
+        return Ok("Pulse".to_string());
+    }
+
+    return Err(path.to_string_lossy().to_string());
+}
+
+#[tauri::command]
+pub fn SetDataPathCommand(TabName: String, path: String) -> Result<(), String> {
     let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
-    let processor = map.get_mut(&tab_name).ok_or("Tab not found")?;
+    let processor = map.get_mut(&TabName).ok_or("Tab not found")?;
     processor.SetDataPath(path)
 }
 
 #[tauri::command]
-pub fn AnalyzeFolder(tab_name:String)->Result<(), String>{
+pub fn AnalyzeFolderCommand(TabName:String)->Result<(), String>{
     let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
-    let processor = map.get_mut(&tab_name).ok_or("Tab not found")?;
+    let processor = map.get_mut(&TabName).ok_or("Tab not found")?;
     processor.AnalyzeFolder()
 }
 
 #[tauri::command]
-pub fn SaveCalibratedCommand(tab_name: String) -> Result<(), String> {
+pub fn SaveCalibratedCommand(TabName: String) -> Result<(), String> {
     let mut map = PROCESSORS.lock().map_err(|_| "Lock error")?;
-    match map.get_mut(&tab_name) {
+    match map.get_mut(&TabName) {
         Some(TabProcessor::IV(iv)) => iv.SaveCalibrated(),
         _ => Err("Tab is not an IV Processor".to_string()),
     }
 }
 
 #[tauri::command]
-pub fn CalibrateSingleJumpCommand(tab_name: String,temp:u32, CalibStartI_bias:f64,CalibEndI_bias:f64) -> Result<(), String> {
+pub fn CalibrateSingleJumpCommand(TabName: String,temp:u32, CalibStartI_bias:f64,CalibEndI_bias:f64) -> Result<(), String> {
     let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
-    match map.get_mut(&tab_name) {
+    match map.get_mut(&TabName) {
         Some(TabProcessor::IV(iv)) => iv.CalibrateSingleJump(temp, CalibStartI_bias,CalibEndI_bias),
         _ => Err("Tab is not an IV Processor".to_string()),
     }
 }
 
 #[tauri::command]
-pub fn CalibrateMultipleJumpCommand(tab_name: String,temp:u32, CalibStartI_bias:f64,CalibEndI_bias:f64) -> Result<(), String> {
+pub fn CalibrateMultipleJumpCommand(TabName: String,temp:u32, CalibStartI_bias:f64,CalibEndI_bias:f64) -> Result<(), String> {
     let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
-    match map.get_mut(&tab_name) {
+    match map.get_mut(&TabName) {
         Some(TabProcessor::IV(iv)) => iv.CalibrateMultipleJump(temp, CalibStartI_bias,CalibEndI_bias),
         _ => Err("Tab is not an IV Processor".to_string()),
     }
 }
 
 #[tauri::command]
-pub fn GetIVCommand(tab_name: String) -> Result<serde_json::Value, String> {
+pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
     let map = PROCESSORS.lock().unwrap();
-    match map.get(&tab_name) {
+    match map.get(&TabName) {
         Some(TabProcessor::IV(p)) => {
             let mut result = serde_json::Map::new();
 
@@ -147,18 +194,18 @@ pub fn GetIVCommand(tab_name: String) -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub fn FitRTCommand(tab_name: String) -> Result<(), String> {
+pub fn FitRTCommand(TabName: String) -> Result<(), String> {
     let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
-    match map.get_mut(&tab_name) {
+    match map.get_mut(&TabName) {
         Some(TabProcessor::RT(rt)) => rt.FitRT(),
         _ => Err("Tab is not an RT Processor".to_string()),
     }
 }
 
 #[tauri::command]
-pub fn GetRTCommand(tab_name: String) -> Result<serde_json::Value, String> {
+pub fn GetRTCommand(TabName: String) -> Result<serde_json::Value, String> {
     let map = PROCESSORS.lock().unwrap();
-    match map.get(&tab_name) {
+    match map.get(&TabName) {
         Some(TabProcessor::RT(p)) => {
             let mut result = serde_json::Map::new();
 
@@ -177,9 +224,9 @@ pub fn GetRTCommand(tab_name: String) -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub fn GetPulseInfoCommand(tab_name: String) -> Result<serde_json::Value, String> {
+pub fn GetPulseInfoCommand(TabName: String) -> Result<serde_json::Value, String> {
     let map = PROCESSORS.lock().unwrap();
-    match map.get(&tab_name) {
+    match map.get(&TabName) {
         Some(TabProcessor::Pulse(p)) => {
             let mut outer = serde_json::Map::new();
 
@@ -204,9 +251,9 @@ pub fn GetPulseInfoCommand(tab_name: String) -> Result<serde_json::Value, String
 }
 
 #[tauri::command]
-pub fn GetPulseAnalysisCommand(tab_name: String,key:u32,Channel:u32) -> Result<serde_json::Value, String> {
+pub fn GetPulseAnalysisCommand(TabName: String,key:u32,Channel:u32) -> Result<serde_json::Value, String> {
     let map = PROCESSORS.lock().unwrap();
-    match map.get(&tab_name) {
+    match map.get(&TabName) {
         Some(TabProcessor::Pulse(p)) => {
             let mut result = serde_json::Map::new();
 
@@ -237,9 +284,9 @@ pub fn GetPulseAnalysisCommand(tab_name: String,key:u32,Channel:u32) -> Result<s
     }
 }
 
-pub fn SaveFigCommand(tab_name:String,path: String) -> Result<(), String> {
+pub fn SaveFigCommand(TabName:String,path: String) -> Result<(), String> {
     let map = PROCESSORS.lock().unwrap();
-    match map.get(&tab_name) {
+    match map.get(&TabName) {
         Some(TabProcessor::IV(p)) => {
             p.SaveFig(&path)?;
             Ok(())

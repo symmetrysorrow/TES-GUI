@@ -1,7 +1,6 @@
 #![allow(nonstandard_style)]
 
-use crate::TabManager::{AnalyzeFolder, CalibrateMultipleJumpCommand, CalibrateSingleJumpCommand, FitRTCommand, GetIVCommand, GetPulseAnalysisCommand, GetPulseInfoCommand, GetRTCommand, RegisterProcessor, SaveCalibratedCommand, SetDataPath, UnregisterProcessor};
-
+use crate::TabManager::{FindFolderType,AnalyzeFolderCommand, CalibrateMultipleJumpCommand, CalibrateSingleJumpCommand, FitRTCommand, GetIVCommand, GetPulseAnalysisCommand, GetPulseInfoCommand, GetRTCommand, RegisterProcessor, SaveCalibratedCommand, SetDataPathCommand, UnregisterProcessor};
 pub mod DataProcessor;
 pub mod TESAnalyzer;
 pub mod Config;
@@ -14,6 +13,10 @@ pub mod PyMod;
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
+#[tauri::command]
+fn greet_string(name:String) -> String {
+        format!("Hello, {}! You've been greeted from String!", name)
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,10 +26,11 @@ pub fn run() {
         // ✅ すべてのコマンドをここでまとめて指定
         .invoke_handler(tauri::generate_handler![
             greet,
+                greet_string,
             RegisterProcessor,
             UnregisterProcessor,
-            SetDataPath,
-            AnalyzeFolder,
+            SetDataPathCommand,
+            AnalyzeFolderCommand,
             SaveCalibratedCommand,
             CalibrateSingleJumpCommand,
             CalibrateMultipleJumpCommand,
@@ -35,6 +39,7 @@ pub fn run() {
             GetRTCommand,
             GetPulseInfoCommand,
             GetPulseAnalysisCommand,
+            FindFolderType,
         ])
         // 実行
         .run(tauri::generate_context!())

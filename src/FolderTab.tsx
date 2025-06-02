@@ -51,34 +51,37 @@ const DynamicTabs = () => {
 
     const handleOpenFolder = async (tabId: string) => {
         const selected = await open({ directory: true });
+        console.log("選択されたフォルダ:", selected);
         if (selected) {
             const folderPath = selected as string;
             const FolderTitle = getFolderName(folderPath);
 
             try {
                 // Rust側の `FindFolderType` を呼び出してフォルダの種類を取得
-                const folderType: string = await invoke("FindFolderType", { folderString: folderPath });
-                await invoke("greet", { name: folderPath });
+                const folderType: string = await invoke("FindFolderType", { folder: folderPath });
 
                 let targetType: TargetEnum | null = null;
                 let content = null;
-
                 switch (folderType) {
                     case "IV":
                         targetType = TargetEnum.IV;
                         content = <IVContent folderPath={folderPath} />;
+                        await invoke("RegisterProcessor", { tabName: tabId,processorType: "IV" });
                         break;
                     case "RT":
                         targetType = TargetEnum.RT;
                         content = <RTContent folderPath={folderPath} />;
+                        await invoke("RegisterProcessor", { tabName: tabId,processorType: "RT" });
                         break;
                     case "Pulse":
                         targetType = TargetEnum.Pulse;
                         content = <PulseContent folderPath={folderPath} />;
+                        await invoke("RegisterProcessor", { tabName: tabId,processorType: "Pulse" });
                         break;
                     default:
                         targetType = null;
                 }
+                await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
 
                 setTabs((prevTabs) =>
                     prevTabs.map((tab) =>
@@ -94,12 +97,19 @@ const DynamicTabs = () => {
         }
     };
 
-    const removeTab = (id: string) => {
+    const removeTab = async (id: string) => {
+        const tabToRemove = tabs.find((tab) => tab.id === id);
+        if (tabToRemove && tabToRemove.TargetType !== null) {
+            console.log("TargetType:", tabToRemove.TargetType);
+            await invoke("UnregisterProcessor", { tabName: id });
+        }
+
         const newTabs = tabs.filter((tab) => tab.id !== id);
         setTabs(newTabs);
 
         if (id === currentTabId) {
-            setCurrentTabId(newTabs.length > 0 ? newTabs[0].id : "");
+            const lastTab = newTabs[newTabs.length - 1];
+            setCurrentTabId(lastTab ? lastTab.id : "");
         }
     };
 

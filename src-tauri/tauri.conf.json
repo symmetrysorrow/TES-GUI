@@ -32,5 +32,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "tauri-plugin-open": {
+      "all": true
+    },
+    "tauri-plugin-dialog": {
+      "all": true
+    }
   }
 }

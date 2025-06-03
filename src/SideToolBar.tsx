@@ -57,9 +57,9 @@ export default function SideToolBar({}: {}) {
 
     return (
         <TooltipProvider>
-            <div className="flex h-screen ">
+            <div className="flex">
                 {CurrentTarget === TargetEnum.IV && (
-                    <aside className="w-12 bg-gray-800 text-white flex flex-grow flex-col items-center flex-shrink-0">
+                    <aside className="w-12 bg-gray-800 text-white flex flex-grow flex-col items-center">
                         <nav>
                             <ul>
                                 {tools.map((tool) => (

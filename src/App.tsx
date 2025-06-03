@@ -3,7 +3,7 @@ import DynamicTabs from "@/FolderTab.tsx";
 
 function AppContent() {
   return (
-    <div className="flex h-full flex-col w-full">
+    <div className="h-screen flex flex-col">
         <DynamicTabs/>
     </div>
   );

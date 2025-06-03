@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { TabContentProps } from "@/FolderTab.tsx";
 import Plot from "react-plotly.js";
-import {Layout, PlotData} from "plotly.js";
+import {PlotData} from "plotly.js";
 import { invoke } from "@tauri-apps/api/core";
 
 interface RTData {
@@ -54,11 +54,17 @@ const RTContent: React.FC<TabContentProps> = ({ folderPath,tabId }) => {
                     data={plotData}
                     layout={{
                         title: {text: 'A Fancy Plot'},
-                        //xaxis: { title: "温度 (K)" },
+                        dragmode:"pan",
                         //yaxis: { title: "抵抗 (Ω)" },
                         autosize: true,
                     }}
                     style={{ width: "100%", height: "500px" }}
+                    config={{
+                        scrollZoom: true,
+                        doubleClick: "reset",
+                        displayModeBar: true,
+
+                    }}
                     //useResizeHandler={true}
                 />
             ) : (

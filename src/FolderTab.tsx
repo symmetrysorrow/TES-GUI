@@ -200,14 +200,14 @@ const DynamicTabs = () => {
     };
 
     return (
-        <div className="w-full mx-auto bg-[#1f1f23] text-white min-h-screen flex flex-col">
-            <Tabs value={currentTabId} onValueChange={handleTabChange} className="h-full flex flex-col w-full">
+        <div className="w-full mx-auto bg-[#1f1f23] text-white h-screen flex flex-col">
+            <Tabs value={currentTabId} onValueChange={handleTabChange} className="flex flex-col flex-grow w-full">
                 <TabsList className="flex flex-glow bg-transparent rounded-t-lg w-full justify-start">
                     {tabs.map((tab) => (
                         <TabsTrigger
                             key={tab.id}
                             value={tab.id}
-                            className="min-w-[100px] max-w-[200px] px-4 py-2 appearance-none data-[state=active]:bg-[#343438] data-[state=active]:text-white text-gray-450 hover:bg-gray-700 hover:text-gray-400 last:border-r-0 flex justify-between items-center w-full"
+                            className="min-w-[100px] max-w-[200px] px-4 py-0 appearance-none data-[state=active]:bg-[#343438] data-[state=active]:text-white text-gray-450 hover:bg-gray-700 hover:text-gray-400 last:border-r-0 flex justify-between items-center w-full"
                         >
                             <span className="truncate">{tab.title}</span>
                             <span

@@ -39,8 +39,8 @@ export const TopToolbar=()=> {
     }
 
     return (
-        <div className="flex justify-between items-center bg-[#3b3b3f] text-white shadow-md">
-            <div className="text-xl font-semibold flex-1 text-center">{CurrentTarget}</div>
+        <div className="flex justify-between items-center m-0 p-0 bg-[#3b3b3f] text-white shadow-md">
+            <div className="text-xl font-semibold flex-1 m-0 p-0 text-center">{CurrentTarget}</div>
             <div className="flex">
                 <Button variant="ghost" onClick={handlePrint}>
                     <Printer className="w-6 h-6" />

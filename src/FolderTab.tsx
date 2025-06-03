@@ -1,4 +1,4 @@
-import {useState ,ReactNode} from "react";
+import React, {useState, ReactNode, useEffect, useRef} from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TargetEnum, useTargetState } from "@/TargetContext.tsx";
 import { Plus } from "lucide-react";
@@ -16,7 +16,7 @@ type TabItem = {
     id: string;
     title: string;
     FolderPath: string | null;
-    content: ReactNode|null;
+    content: () => ReactNode|null;
     TargetType: TargetEnum | null;
 };
 
@@ -28,73 +28,142 @@ const getFolderName = (path: string) => {
 const DynamicTabs = () => {
     const { setCurrentTarget } = useTargetState();
 
+    const NewTabContent: React.FC<{ id: string }> = () => {
+        return (
+            <FolderDropArea>
+                <Button onClick={() => handleDialog()}>フォルダを開く</Button>
+            </FolderDropArea>
+        );
+    };
+
     // 初期タブを作成
-    const initialTabId = crypto.randomUUID();
+    const InitialID = crypto.randomUUID();
+    const newTabContent = () => <NewTabContent id={InitialID} />;
     const [tabs, setTabs] = useState<TabItem[]>([
-        { id: initialTabId, title: "新しいタブ",FolderPath:null, content: null, TargetType: null }
+        { id: InitialID, title: "新しいタブ",FolderPath:null, content: newTabContent, TargetType: null }
     ]);
-    const [currentTabId, setCurrentTabId] = useState<string>(initialTabId);
+    const [currentTabId, setCurrentTabId] = useState<string>(InitialID);
+    const currentTabIdRef = useRef(currentTabId);
+    useEffect(() => {
+        currentTabIdRef.current = currentTabId;
+    }, [currentTabId]);
 
     const addTab = () => {
         const newId = crypto.randomUUID();
-        const newTabContent = (
-            <div className="flex flex-col h-full justify-center items-center">
-                <Button onClick={() => handleDialog(newId)}>フォルダを開く</Button>
-            </div>
-        );
-
+        const newTabContent = () => <NewTabContent id={newId} />;
+        setCurrentTabId(newId); // 新しいタブをアクティブにする
         setTabs((prevTabs) => [
             ...prevTabs,
             { id: newId, title: "新しいタブ", FolderPath:null,content: newTabContent, TargetType: null }
+            //{ id: newId, title: newId, FolderPath:null,content: newTabContent, TargetType: null }
         ]);
-        setCurrentTabId(newId); // 新しいタブをアクティブにする
+        console.log("NewId:", newId);
+        console.log("CurrentId:", currentTabId);
     };
 
-    const handleDialog=async (tabId:string)=>{
+    const handleDialog=async ()=>{
         const selected = await open({ directory: true });
         console.log("選択されたフォルダ:", selected);
         if(selected){
             const folderPath = selected as string;
-            await handleOpenFolder(tabId, folderPath);
+            await handleOpenFolder(folderPath);
         }
     }
 
-    const handleOpenFolder = async (tabId: string,folderPath:string) => {
+    const FolderDropArea: React.FC<{ children?: ReactNode }> = ({ children }) => {
+        const [backgroundClass, setBackgroundClass] = useState("bg-transparent");
+        const [message, setMessage] = useState("");
+
+        useEffect(() => {
+            const unlistenDrop = listen('tauri://drag-drop', async (e: any) => {
+                const paths: string[] = e.payload.paths;
+                let opened = false;
+                for (const path of paths) {
+                    try {
+                        await handleOpenFolder(path);
+                        opened = true;
+                        break; // 1つだけ処理して終了
+
+                    } catch (err) {
+                        console.error("lstat error:", err);
+                    }
+                }
+
+                setBackgroundClass("bg-transparent");
+                setMessage(opened ? "1 件のフォルダを開きました" : "フォルダ以外の項目は無視されました");
+            });
+
+            const unlistenEnter = listen('tauri://drag-enter', () => {
+                setBackgroundClass("bg-amber-200/60");
+            });
+
+            const unlistenLeave = listen('tauri://drag-leave', () => {
+                setBackgroundClass("bg-transparent");
+            });
+
+            return () => {
+                unlistenDrop.then((fn) => fn());
+                unlistenEnter.then((fn) => fn());
+                unlistenLeave.then((fn) => fn());
+            };
+        }, []);
+
+        return (
+            <div className={`flex flex-col justify-center items-center w-full h-full relative ${backgroundClass}`}>
+                <div className="z-10">{children}</div>
+                <div className="absolute bottom-1 w-full text-center text-sm text-black z-20">
+                    {message}
+                </div>
+                <div className="absolute top-0 left-0 w-full h-full z-0 pointer-events-none" />
+            </div>
+        );
+    };
+
+    const handleOpenFolder = async (folderPath:string) => {
+        const tabId = currentTabIdRef.current;
         const FolderTitle = getFolderName(folderPath);
         try {
             // Rust側の `FindFolderType` を呼び出してフォルダの種類を取得
             const folderType: string = await invoke("FindFolderType", { folder: folderPath });
 
             let targetType: TargetEnum | null = null;
-            let content = null;
+            let content = ()=><></>; // 初期値として空のコンポーネントを設定
             switch (folderType) {
                 case "IV":
                     targetType = TargetEnum.IV;
-                    content = <IVContent folderPath={folderPath} />;
+                    content = ()=><IVContent folderPath={folderPath} />;
                     await invoke("RegisterProcessor", { tabName: tabId,processorType: "IV" });
+                    await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
+                    await invoke("AnalyzeFolderCommand", { tabName: tabId});
                     break;
                 case "RT":
                     targetType = TargetEnum.RT;
-                    content = <RTContent folderPath={folderPath} />;
+                    content =()=> <RTContent folderPath={folderPath} />;
                     await invoke("RegisterProcessor", { tabName: tabId,processorType: "RT" });
+                    await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
+                    await invoke("AnalyzeFolderCommand", { tabName: tabId});
+                    const rt = await invoke("GetRTCommand", { tabName: tabId });
+                    console.log("RTデータ:", rt);
+
                     break;
                 case "Pulse":
                     targetType = TargetEnum.Pulse;
-                    content = <PulseContent folderPath={folderPath} />;
+                    content =()=> <PulseContent folderPath={folderPath} />;
                     await invoke("RegisterProcessor", { tabName: tabId,processorType: "Pulse" });
+                    await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
                     break;
                 default:
                     targetType = null;
             }
-            await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
+
 
             setTabs((prevTabs) =>
                 prevTabs.map((tab) =>
                     tab.id === tabId ? { ...tab, title: FolderTitle, TargetType: targetType, content: content } : tab
                 )
             );
-
             setCurrentTarget(targetType);
+            console.log("フォルダの種類:", folderType);
         } catch (error) {
             console.error("フォルダ判定エラー:", error);
             alert("フォルダの種類を判定できませんでした。");
@@ -159,10 +228,10 @@ const DynamicTabs = () => {
                         <SideToolBar />
                     </SideToolBarProvider>
 
-                    <div className="flex-grow p-4 bg-gray-900 text-white rounded-b-lg">
+                    <div className="flex-grow bg-gray-900 text-white rounded-b-lg">
                         {tabs.map((tab) => (
                             <TabsContent key={tab.id} value={tab.id} className="h-full w-full">
-                                {tab.content}
+                                {tab.content()}
                             </TabsContent>
                         ))}
                     </div>

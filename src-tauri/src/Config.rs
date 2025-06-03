@@ -1,5 +1,5 @@
-use serde::{Deserialize, Deserializer, Serialize};
 use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
 
 fn float_to_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>
 where
@@ -21,10 +21,10 @@ where
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 pub struct TESAnalysisConfig {
     pub R_sh: f64,
-    pub LinerFitSample:u32,
+    pub LinerFitSample: u32,
 }
 
-impl TESAnalysisConfig{
+impl TESAnalysisConfig {
     pub fn new() -> Self {
         Self {
             R_sh: 3.9,
@@ -32,7 +32,7 @@ impl TESAnalysisConfig{
         }
     }
 }
-#[derive(Debug, Clone,Serialize, Deserialize,PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PulseAnalysisConfig {
     pub CutoffFrequency: f64,
     #[serde(deserialize_with = "float_to_u32")]
@@ -68,9 +68,7 @@ impl PulseAnalysisConfig {
     }
 }
 
-
-
-#[derive(Debug, Clone,Serialize, Deserialize,PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PulseReadoutConfig {
     #[serde(deserialize_with = "float_to_u32")]
     pub Sample: u32,
@@ -89,7 +87,7 @@ impl PulseReadoutConfig {
     }
 }
 
-#[derive(Debug,Clone,Serialize,  Deserialize,PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PulseProcessorConfig {
     pub Readout: PulseReadoutConfig,
     pub Analysis: PulseAnalysisConfig,

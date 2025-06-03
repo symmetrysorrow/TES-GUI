@@ -39,6 +39,9 @@
     },
     "tauri-plugin-dialog": {
       "all": true
+    },
+    "tauri-plugin-fs": {
+      "all": true
     }
   }
 }

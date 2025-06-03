@@ -59,13 +59,13 @@ export default function SideToolBar({}: {}) {
         <TooltipProvider>
             <div className="flex h-screen ">
                 {CurrentTarget === TargetEnum.IV && (
-                    <aside className="w-12 bg-gray-800 text-white p-4 flex flex-grow flex-col items-center flex-shrink-0">
+                    <aside className="w-12 bg-gray-800 text-white flex flex-grow flex-col items-center flex-shrink-0">
                         <nav>
                             <ul>
                                 {tools.map((tool) => (
                                     <li
                                         key={tool.title}
-                                        className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
+                                        className={`flex items-center rounded-md cursor-pointer transition-colors ${
                                             CurrentTool === tool.ToolType ? "bg-gray-600" : "hover:bg-gray-700"
                                         }`}
                                         onClick={() => setCurrentTool(tool.ToolType)}

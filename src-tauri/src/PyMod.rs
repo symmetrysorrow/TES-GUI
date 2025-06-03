@@ -1,15 +1,21 @@
 use reqwest::Client;
 use serde_json::json;
 
-pub async fn BesselCoefficients(rate:f64, fs:f64) ->Result<Vec<Vec<f64>>,String>{
+pub async fn BesselCoefficients(rate: f64, fs: f64) -> Result<Vec<Vec<f64>>, String> {
     let client = Client::new();
     let url = "https://tes-gui-pyhelper.onrender.com/Bessel";
 
-    let res = client.post(url)
+    let res = client
+        .post(url)
         .json(&json!({ "rate": rate, "fs": fs }))
-        .send().await.map_err(|e|format!("Failed to get response: {}", e))?;
+        .send()
+        .await
+        .map_err(|e| format!("Failed to get response: {}", e))?;
 
-    let json: serde_json::Value = res.json().await.map_err(|e|format!("Failed to execute Python command: {}", e))?;
+    let json: serde_json::Value = res
+        .json()
+        .await
+        .map_err(|e| format!("Failed to execute Python command: {}", e))?;
     let a = json["a"]
         .as_array()
         .unwrap()
@@ -27,16 +33,23 @@ pub async fn BesselCoefficients(rate:f64, fs:f64) ->Result<Vec<Vec<f64>>,String>
     return Ok(vec![a, b]);
 }
 
-pub async fn RTFit(R:&Vec<f64>,T:&Vec<f64>) -> Result<Vec<f64>,String>{
+pub async fn RTFit(R: &Vec<f64>, T: &Vec<f64>) -> Result<Vec<f64>, String> {
     let client = Client::new();
     let url = "https://tes-gui-pyhelper.onrender.com/RTFit";
 
-    let res = client.post(url)
+    let res = client
+        .post(url)
         .json(&json!({ "R": R, "T": T }))
-        .send().await.map_err(|e|format!("Failed to get response: {}", e))?;
+        .send()
+        .await
+        .map_err(|e| format!("Failed to get response: {}", e))?;
 
-    let json: serde_json::Value = res.json().await.map_err(|e|format!("Failed to execute Python command: {}", e))?;
-    let result = json.as_array()
+    let json: serde_json::Value = res
+        .json()
+        .await
+        .map_err(|e| format!("Failed to execute Python command: {}", e))?;
+    let result = json
+        .as_array()
         .unwrap()
         .iter()
         .map(|v| v.as_f64().unwrap())

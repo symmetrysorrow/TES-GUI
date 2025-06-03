@@ -20,6 +20,11 @@ type TabItem = {
     TargetType: TargetEnum | null;
 };
 
+export interface TabContentProps {
+    folderPath: string;
+    tabId: string;  // または processorId
+}
+
 // フォルダパスから最後のディレクトリ名を取得
 const getFolderName = (path: string) => {
     return path.split("\\").filter(Boolean).pop() || "新しいタブ";
@@ -131,14 +136,14 @@ const DynamicTabs = () => {
             switch (folderType) {
                 case "IV":
                     targetType = TargetEnum.IV;
-                    content = ()=><IVContent folderPath={folderPath} />;
+                    content = () => <IVContent folderPath={folderPath} tabId={tabId} />;
                     await invoke("RegisterProcessor", { tabName: tabId,processorType: "IV" });
                     await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
                     await invoke("AnalyzeFolderCommand", { tabName: tabId});
                     break;
                 case "RT":
                     targetType = TargetEnum.RT;
-                    content =()=> <RTContent folderPath={folderPath} />;
+                    content = () => <RTContent folderPath={folderPath} tabId={tabId} />;
                     await invoke("RegisterProcessor", { tabName: tabId,processorType: "RT" });
                     await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
                     await invoke("AnalyzeFolderCommand", { tabName: tabId});
@@ -148,7 +153,7 @@ const DynamicTabs = () => {
                     break;
                 case "Pulse":
                     targetType = TargetEnum.Pulse;
-                    content =()=> <PulseContent folderPath={folderPath} />;
+                    content = () => <PulseContent folderPath={folderPath} tabId={tabId} />;
                     await invoke("RegisterProcessor", { tabName: tabId,processorType: "Pulse" });
                     await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
                     break;

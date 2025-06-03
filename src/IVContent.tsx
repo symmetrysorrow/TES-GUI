@@ -1,10 +1,7 @@
 import React, { useRef} from "react";
+import { TabContentProps } from "@/FolderTab.tsx";
 
-type IVContentProps = {
-    folderPath: string;
-};
-
-const IVContent: React.FC<IVContentProps> = ({ folderPath }) => {
+const IVContent: React.FC<TabContentProps> = ({ folderPath }) => {
     const isFirstRender = useRef(true);
 
     // 初めてレンダリングされた際に処理を行いたい

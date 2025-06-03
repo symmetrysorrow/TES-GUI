@@ -1,10 +1,7 @@
-import {useEffect, useRef} from "react";
+import React, {useEffect, useRef} from "react";
+import {TabContentProps} from "@/FolderTab.tsx";
 
-type PulseContentProps = {
-    folderPath: string;
-};
-
-const PulseContent: React.FC<PulseContentProps> = ({ folderPath }) => {
+const PulseContent: React.FC<TabContentProps> = ({ folderPath }) => {
     const mounted = useRef(false);
 
     useEffect(() => {

@@ -155,7 +155,6 @@ impl DataProcessorT for RTProcessorS {
             Regex::new(r"_(\d+)mK_(\d+)uA\.dat").map_err(|e| format!("Regex Error\n{}", e))?;
 
         let mut V_out_current: HashMap<u32, Vec<f64>> = HashMap::new();
-
         for file in RTFiles {
             let V_out = LoadTxt(file.as_path())?
                 .mean()
@@ -168,9 +167,8 @@ impl DataProcessorT for RTProcessorS {
                 let current = captures[2]
                     .parse::<u32>()
                     .map_err(|e| format!("Regex Error\n{}", e))?;
-                if current!=0{
-                    self.Currents.insert(current);
-                }
+                
+                self.Currents.insert(current);
                 self.Temp_Current
                     .entry(current)
                     .or_insert_with(Vec::new)
@@ -179,6 +177,7 @@ impl DataProcessorT for RTProcessorS {
                     .entry(current)
                     .or_insert_with(Vec::new)
                     .push(V_out);
+                
             }
         }
         let mut I_bias_sample: Vec<f64> = self.Currents.iter().map(|x| *x as f64).collect();
@@ -190,6 +189,7 @@ impl DataProcessorT for RTProcessorS {
         V_out_sample.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
         self.eta = 1.0 / LinerFit(&Array1::from(I_bias_sample), &Array1::from(V_out_sample))?;
+        println!("eta: {}", self.eta);
 
         for cur in self.Currents.iter() {
             for i in 0..V_out_current.get(cur).unwrap().len() {
@@ -200,15 +200,18 @@ impl DataProcessorT for RTProcessorS {
                     .or_insert_with(Vec::new)
                     .push(R_tes);
             }
-            println!();
         }
+        
+        self.Currents.remove(&0);
+        self.Temp_Current.remove(&0);
+        self.R_tes_Current.remove(&0);
 
         if cfg!(debug_assertions) {
             println!("Currents: {:?}", self.Currents);
             let R_TES = to_string_pretty(&self.R_tes_Current).unwrap();
-            let temp = to_string_pretty(&self.Temp_Current).unwrap();
+            //let temp = to_string_pretty(&self.Temp_Current).unwrap();
             println!("R_tes_Current: {}", R_TES);
-            println!("Temp_Current: {}", temp);
+            //println!("Temp_Current: {}", temp);
             println!("eta: {}", self.eta);
         }
 

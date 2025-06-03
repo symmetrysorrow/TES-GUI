@@ -7,6 +7,7 @@ import { TopToolbar } from "./TopToolBar";
 import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import IVContent from "@/IVContent";
 import PulseContent from "@/PulseContent";
 import RTContent from "@/RTContent.tsx";
@@ -38,7 +39,7 @@ const DynamicTabs = () => {
         const newId = crypto.randomUUID();
         const newTabContent = (
             <div className="flex flex-col h-full justify-center items-center">
-                <Button onClick={() => handleOpenFolder(newId)}>フォルダを開く:new</Button>
+                <Button onClick={() => handleDialog(newId)}>フォルダを開く</Button>
             </div>
         );
 
@@ -49,51 +50,54 @@ const DynamicTabs = () => {
         setCurrentTabId(newId); // 新しいタブをアクティブにする
     };
 
-    const handleOpenFolder = async (tabId: string) => {
+    const handleDialog=async (tabId:string)=>{
         const selected = await open({ directory: true });
         console.log("選択されたフォルダ:", selected);
-        if (selected) {
+        if(selected){
             const folderPath = selected as string;
-            const FolderTitle = getFolderName(folderPath);
+            await handleOpenFolder(tabId, folderPath);
+        }
+    }
 
-            try {
-                // Rust側の `FindFolderType` を呼び出してフォルダの種類を取得
-                const folderType: string = await invoke("FindFolderType", { folder: folderPath });
+    const handleOpenFolder = async (tabId: string,folderPath:string) => {
+        const FolderTitle = getFolderName(folderPath);
+        try {
+            // Rust側の `FindFolderType` を呼び出してフォルダの種類を取得
+            const folderType: string = await invoke("FindFolderType", { folder: folderPath });
 
-                let targetType: TargetEnum | null = null;
-                let content = null;
-                switch (folderType) {
-                    case "IV":
-                        targetType = TargetEnum.IV;
-                        content = <IVContent folderPath={folderPath} />;
-                        await invoke("RegisterProcessor", { tabName: tabId,processorType: "IV" });
-                        break;
-                    case "RT":
-                        targetType = TargetEnum.RT;
-                        content = <RTContent folderPath={folderPath} />;
-                        await invoke("RegisterProcessor", { tabName: tabId,processorType: "RT" });
-                        break;
-                    case "Pulse":
-                        targetType = TargetEnum.Pulse;
-                        content = <PulseContent folderPath={folderPath} />;
-                        await invoke("RegisterProcessor", { tabName: tabId,processorType: "Pulse" });
-                        break;
-                    default:
-                        targetType = null;
-                }
-                await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
-
-                setTabs((prevTabs) =>
-                    prevTabs.map((tab) =>
-                        tab.id === tabId ? { ...tab, title: FolderTitle, TargetType: targetType, content: content } : tab
-                    )
-                );
-
-                setCurrentTarget(targetType);
-            } catch (error) {
-                console.error("フォルダ判定エラー:", error);
-                alert("フォルダの種類を判定できませんでした。");
+            let targetType: TargetEnum | null = null;
+            let content = null;
+            switch (folderType) {
+                case "IV":
+                    targetType = TargetEnum.IV;
+                    content = <IVContent folderPath={folderPath} />;
+                    await invoke("RegisterProcessor", { tabName: tabId,processorType: "IV" });
+                    break;
+                case "RT":
+                    targetType = TargetEnum.RT;
+                    content = <RTContent folderPath={folderPath} />;
+                    await invoke("RegisterProcessor", { tabName: tabId,processorType: "RT" });
+                    break;
+                case "Pulse":
+                    targetType = TargetEnum.Pulse;
+                    content = <PulseContent folderPath={folderPath} />;
+                    await invoke("RegisterProcessor", { tabName: tabId,processorType: "Pulse" });
+                    break;
+                default:
+                    targetType = null;
             }
+            await invoke("SetDataPathCommand",{tabName:tabId, path: folderPath});
+
+            setTabs((prevTabs) =>
+                prevTabs.map((tab) =>
+                    tab.id === tabId ? { ...tab, title: FolderTitle, TargetType: targetType, content: content } : tab
+                )
+            );
+
+            setCurrentTarget(targetType);
+        } catch (error) {
+            console.error("フォルダ判定エラー:", error);
+            alert("フォルダの種類を判定できませんでした。");
         }
     };
 

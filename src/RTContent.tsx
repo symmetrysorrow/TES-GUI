@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
-import { TabContentProps } from "@/FolderTab.tsx";
+import { useEffect, useRef, useState } from "react";
 import Plot from "react-plotly.js";
 import {PlotData} from "plotly.js";
-import { invoke } from "@tauri-apps/api/core";
+import { PlotlyHTMLElement } from "plotly.js";
+import {invoke} from "@tauri-apps/api/core";
 
 interface RTData {
     [current: string]: {
@@ -11,18 +11,13 @@ interface RTData {
     };
 }
 
-const RTContent: React.FC<TabContentProps> = ({ folderPath,tabId }) => {
-    const mounted = useRef(false);
-    const [data, setData] = useState<RTData | null>(null);
-    const [error, setError] = useState<string | null>(null);
+const RTContent = ({ folderPath, tabId }: any) => {
+    const plotRef = useRef<PlotlyHTMLElement | null>(null);
 
+
+    const [data, setData] = useState<RTData | null>(null);
     useEffect(() => {
-        if (!mounted.current) {
-            console.log("RTContent: 初回作成時にのみフォルダパスを出力", folderPath);
-            mounted.current = true;
-        } else {
-            console.log("RTContent: フォルダパスが変更されました:", folderPath);
-        }
+        console.log("RTContent useEffect called with folderPath:", folderPath, "tabId:", tabId);
 
         invoke<RTData>("GetRTCommand", { tabName: tabId })
             .then((res) => {
@@ -30,9 +25,75 @@ const RTContent: React.FC<TabContentProps> = ({ folderPath,tabId }) => {
             })
             .catch((err) => {
                 console.error("データ取得エラー:", err);
-                setError("データ取得に失敗しました");
+                alert("データ取得に失敗しました");
             });
-    }, [folderPath]);
+    }, []);
+
+    useEffect(() => {
+        const plotEl = plotRef.current;
+        if (!plotEl) return;
+
+        let isRightDragging = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        const handleMouseDown = (e: MouseEvent) => {
+            if (e.button === 2) { // 中央ボタン（ミドルクリック）
+                e.preventDefault();
+                isRightDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
+        };
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (isRightDragging && plotEl) {
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+
+                const xRange = plotEl.layout.xaxis.range;
+                const yRange = plotEl.layout.yaxis.range;
+                const width = plotEl.clientWidth;
+                const height = plotEl.clientHeight;
+
+                if (xRange && yRange && width > 0 && height > 0) {
+                    const xScale = (xRange[1] - xRange[0]) / width;   // [実座標]/[画素] = 1pxあたりの移動量
+                    const yScale = (yRange[1] - yRange[0]) / height;
+
+                    window.Plotly.relayout(plotEl, {
+                        "xaxis.range[0]": xRange[0] - dx * xScale,
+                        "xaxis.range[1]": xRange[1] - dx * xScale,
+                        "yaxis.range[0]": yRange[0] + dy * yScale,
+                        "yaxis.range[1]": yRange[1] + dy * yScale,
+                    });
+                }
+
+
+            }
+        };
+
+        const handleMouseUp = () => {
+            isRightDragging = false;
+        };
+
+        const handleContextMenu = (e: MouseEvent) => {
+            e.preventDefault(); // 中央クリックのコンテキストメニューを無効化
+
+        }
+
+        plotEl.addEventListener("mousedown", handleMouseDown);
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+        plotEl.addEventListener("contextmenu", handleContextMenu);
+
+        return () => {
+            plotEl.removeEventListener("mousedown", handleMouseDown);
+            window.removeEventListener("mousemove", handleMouseMove);
+            window.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, []);
 
     const plotData: Partial<PlotData>[] = data
         ? Object.entries(data).map(([current, { Temp, R_tes }]) => ({
@@ -45,33 +106,30 @@ const RTContent: React.FC<TabContentProps> = ({ folderPath,tabId }) => {
         : [];
 
     return (
-        <div>
-            <h2>RT 測定データ</h2>
-            <p>選択されたフォルダ: {folderPath}</p>
-            {error && <p style={{ color: "red" }}>{error}</p>}
-            {data ? (
-                <Plot
-                    data={plotData}
-                    layout={{
-                        title: {text: 'A Fancy Plot'},
-                        dragmode:"pan",
-                        //yaxis: { title: "抵抗 (Ω)" },
-                        autosize: true,
-                    }}
-                    style={{ width: "100%", height: "500px" }}
-                    config={{
-                        scrollZoom: true,
-                        doubleClick: "reset",
-                        displayModeBar: true,
-
-                    }}
-                    //useResizeHandler={true}
-                />
-            ) : (
-                <p>データを読み込んでいます...</p>
-            )}
+        <div className="flex flex-col items-center justify-center w-full h-full">
+            <Plot
+                ref={(node: any) => {
+                    if (node && node.el) {
+                        plotRef.current = node.el as Plotly.PlotlyHTMLElement;
+                    }
+                }}
+                data={plotData}
+                layout={{
+                    dragmode: false, // 左クリックドラッグ無効
+                    autosize: true,  // 自動サイズ調整
+                    width:undefined,
+                    height: undefined,
+                }}
+                config={{
+                    scrollZoom: true,
+                    displayModeBar: false,
+                }}
+                useResizeHandler={true} // ← これが重要！
+                style={{ width: "100%", height: "100%" }} // フルサイズ
+            />
         </div>
+
     );
 };
 
-export default React.memo(RTContent);
+export default RTContent;

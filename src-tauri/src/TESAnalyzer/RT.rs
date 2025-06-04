@@ -167,7 +167,7 @@ impl DataProcessorT for RTProcessorS {
                 let current = captures[2]
                     .parse::<u32>()
                     .map_err(|e| format!("Regex Error\n{}", e))?;
-                
+
                 self.Currents.insert(current);
                 self.Temp_Current
                     .entry(current)
@@ -177,7 +177,7 @@ impl DataProcessorT for RTProcessorS {
                     .entry(current)
                     .or_insert_with(Vec::new)
                     .push(V_out);
-                
+
             }
         }
         let mut I_bias_sample: Vec<f64> = self.Currents.iter().map(|x| *x as f64).collect();
@@ -201,7 +201,7 @@ impl DataProcessorT for RTProcessorS {
                     .push(R_tes);
             }
         }
-        
+
         self.Currents.remove(&0);
         self.Temp_Current.remove(&0);
         self.R_tes_Current.remove(&0);

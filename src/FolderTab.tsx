@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, ReactNode } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { Plus } from "lucide-react";
-import SideToolBar, { SideToolBarProvider } from "./SideToolBar";
 import { TopToolbar } from "./TopToolBar";
 import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -45,9 +44,11 @@ const DynamicTabs = () => {
 
     // 新規タブの中身（フォルダ開くエリア）
     const NewTabContent: React.FC<{ id: string }> = () => (
-        <FolderDropArea>
-            <Button onClick={handleDialog}>フォルダを開く</Button>
-        </FolderDropArea>
+        <div className="flex flex-col h-full">
+            <FolderDropArea>
+                <Button onClick={handleDialog}>フォルダを開く</Button>
+            </FolderDropArea>
+        </div>
     );
 
     // フォルダドロップ領域
@@ -174,66 +175,66 @@ const DynamicTabs = () => {
     };
 
     return (
-        <div className="w-full mx-auto bg-zinc-900 text-white h-screen flex flex-col">
-            <TabGroup
-                selectedIndex={tabs.findIndex((t) => t.id === currentTabId)}
-                onChange={(index) => {
-                    const newTabId = tabs[index]?.id;
-                    if (newTabId) {
-                        setCurrentTabId(newTabId);
-                        const targetTab = tabs.find((t) => t.id === newTabId);
-                        if (targetTab) {
-                            setCurrentTarget(targetTab.TargetType ?? null);
-                        }
+
+        <TabGroup
+            selectedIndex={tabs.findIndex((t) => t.id === currentTabId)}
+            onChange={(index) => {
+                const newTabId = tabs[index]?.id;
+                if (newTabId) {
+                    setCurrentTabId(newTabId);
+                    const targetTab = tabs.find((t) => t.id === newTabId);
+                    if (targetTab) {
+                        setCurrentTarget(targetTab.TargetType ?? null);
                     }
-                }}
-            >
-                <TabList className="flex p-1">
-                    {tabs.map((tab) => (
-                        <Tab
-                            key={tab.id}
-                            className={({ selected }) =>
-                                `flex justify-between items-center gap-2 px-4 py-2 rounded-md cursor-pointer hover:bg-zinc-800 
-                ${selected ? "bg-zinc-700" : "bg-transparent"}`
-                            }
-                            type="button"
-                        >
-                            <span className="truncate text-sm">{tab.title}</span>
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeTab(tab.id);
-                                }}
-                                className="text-white hover:text-red-400"
-                                type="button"
-                            >
-                                ×
-                            </button>
-                        </Tab>
-                    ))}
-                    <button
-                        className="text-white hover:bg-zinc-800 ml-2 p-2 rounded-md"
-                        onClick={addTab}
+                }
+            }}
+            className="flex flex-1 flex-col  w-full mx-auto bg-zinc-900 text-white" id="dynamic-tabs-container"
+        >
+            <TabList className="flex flex-shrink-0 p-1">
+                {tabs.map((tab) => (
+                    <Tab
+                        key={tab.id}
+                        className={({ selected }) =>
+                            `flex justify-between items-center gap-2 px-4 py-2 rounded-md cursor-pointer hover:bg-zinc-800
+            ${selected ? "bg-zinc-700" : "bg-transparent"}`
+                        }
                         type="button"
                     >
-                        <Plus size={20} />
-                    </button>
-                </TabList>
+                        <span className="truncate text-sm">{tab.title}</span>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                removeTab(tab.id);
+                            }}
+                            className="text-white hover:text-red-400"
+                            type="button"
+                        >
+                            ×
+                        </button>
+                    </Tab>
+                ))}
+                <button
+                    className="text-white hover:bg-zinc-800 ml-2 p-2 rounded-md"
+                    onClick={addTab}
+                    type="button"
+                >
+                    <Plus size={20} />
+                </button>
+            </TabList>
 
-                <TopToolbar />
 
-                <div className="flex flex-grow w-full">
+            <TopToolbar />
 
-                    <TabPanels  className="flex-grow text-white h-full overflow-auto">
-                        {tabs.map((tab) => (
-                            <TabPanel unmount={false} key={tab.id} className="h-full w-full">
-                                {tab.content()}
-                            </TabPanel>
-                        ))}
-                    </TabPanels>
-                </div>
-            </TabGroup>
-        </div>
+
+            <TabPanels className="w-full flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
+                {tabs.map((tab) => (
+                    <TabPanel unmount={false} key={tab.id} className="w-full flex-grow flex flex-col" id="tab-panel">
+                        {tab.content()}
+                    </TabPanel>
+                ))}
+            </TabPanels>
+
+        </TabGroup>
     );
 };
 

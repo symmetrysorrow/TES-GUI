@@ -105,7 +105,7 @@ const RTContent = ({ folderPath, tabId }: any) => {
         : [];
 
     return (
-        <div className="flex flex-col items-center justify-center w-full h-full">
+        <div className="flex-grow min-height: 0">
             <Plot
                 ref={(node: any) => {
                     if (node && node.el) {
@@ -116,18 +116,16 @@ const RTContent = ({ folderPath, tabId }: any) => {
                 layout={{
                     dragmode: false, // 左クリックドラッグ無効
                     autosize: true,  // 自動サイズ調整
-                    width:undefined,
-                    height: undefined,
                 }}
                 config={{
                     scrollZoom: true,
                     displayModeBar: false,
                 }}
                 useResizeHandler={true} // ← これが重要！
-                style={{ width: "100%", height: "100%" }} // フルサイズ
+                style={{ width: "auto", height: "100%" }} // フルサイズ
+                className="max-h-[100%] flex-grow"
             />
         </div>
-
     );
 };
 

@@ -4,7 +4,7 @@ import {MantineProvider} from "@mantine/core";
 
 function AppContent() {
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex" id="app-container">
         <DynamicTabs/>
     </div>
   );

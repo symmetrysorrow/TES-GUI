@@ -1,5 +1,6 @@
 import {TargetProvider} from "@/TargetContext.tsx";
 import DynamicTabs from "@/FolderTab.tsx";
+import {MantineProvider} from "@mantine/core";
 
 function AppContent() {
   return (
@@ -11,8 +12,10 @@ function AppContent() {
 
 export default function App() {
   return (
-      <TargetProvider>
-          <AppContent />
-      </TargetProvider>
+      <MantineProvider>
+          <TargetProvider>
+              <AppContent />
+          </TargetProvider>
+      </MantineProvider>
   );
 }

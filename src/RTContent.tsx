@@ -80,7 +80,6 @@ const RTContent = ({ folderPath, tabId }: any) => {
 
         const handleContextMenu = (e: MouseEvent) => {
             e.preventDefault(); // 中央クリックのコンテキストメニューを無効化
-
         }
 
         plotEl.addEventListener("mousedown", handleMouseDown);

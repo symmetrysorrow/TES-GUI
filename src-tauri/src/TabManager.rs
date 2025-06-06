@@ -161,15 +161,15 @@ pub fn SaveCalibratedCommand(TabName: String) -> Result<(), String> {
 pub fn CalibrateSingleJumpCommand(
     TabName: String,
     temp: u32,
-    CalibStartI_bias: f64,
-    CalibEndI_bias: f64,
+    CalibStartIbias: f64,
+    CalibEndIbias: f64,
 ) -> Result<(), String> {
     let mut map = PROCESSORS
         .lock()
         .map_err(|_| "Failed to lock processor map")?;
     match map.get_mut(&TabName) {
         Some(TabProcessor::IV(iv)) => {
-            iv.CalibrateSingleJump(temp, CalibStartI_bias, CalibEndI_bias)
+            iv.CalibrateSingleJump(temp, CalibStartIbias, CalibEndIbias)
         }
         _ => Err("Tab is not an IV Processor".to_string()),
     }
@@ -179,15 +179,15 @@ pub fn CalibrateSingleJumpCommand(
 pub fn CalibrateMultipleJumpCommand(
     TabName: String,
     temp: u32,
-    CalibStartI_bias: f64,
-    CalibEndI_bias: f64,
+    CalibStartIbias: f64,
+    CalibEndIbias: f64,
 ) -> Result<(), String> {
     let mut map = PROCESSORS
         .lock()
         .map_err(|_| "Failed to lock processor map")?;
     match map.get_mut(&TabName) {
         Some(TabProcessor::IV(iv)) => {
-            iv.CalibrateMultipleJump(temp, CalibStartI_bias, CalibEndI_bias)
+            iv.CalibrateMultipleJump(temp, CalibStartIbias, CalibEndIbias)
         }
         _ => Err("Tab is not an IV Processor".to_string()),
     }

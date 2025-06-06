@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { PlotData } from "plotly.js";
 import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
+import {invoke} from "@tauri-apps/api/core";
 
 const defaultColors = [
     "#e6194b", "#3cb44b", "#ffe119", "#4363d8",
@@ -40,6 +41,7 @@ interface Setting {
 interface TESAContentProps {
     data: TESAData | null;
     tabs: TabConfig[];
+    tabId: string|null;
     initialSettings?: Record<string, Setting>;
     initialTitles?: Record<string, { title: string; xaxis: string; yaxis: string }>;
 }
@@ -50,6 +52,7 @@ const MARGIN_BOTTOM = 10;
 const TESAContent = ({
                          data,
                          tabs,
+                         tabId,
                          initialSettings = {},
                          initialTitles,
                      }: TESAContentProps) => {
@@ -158,9 +161,8 @@ const TESAContent = ({
     const handleConfirmRange = () => {
         if (!ivSelectedRange) return;
         const [xMin, xMax] = ivSelectedRange;
-        console.log(
-            `選択されたcurrent: ${ivSelectedCurrent}, 確定範囲: Xmin=${xMin}, Xmax=${xMax}`
-        );
+        invoke("CalibrateSingleJumpCommand", {tabName:tabId,temp:Number(ivSelectedCurrent), calibStartIbias:xMin, calibEndIbias:xMax})
+        invoke
         // 全visibleを戻す
         setSettings((prev) =>
             Object.fromEntries(
@@ -192,29 +194,54 @@ const TESAContent = ({
         setIVSelectedRange([xMin, xMax]);
     };
 
-    const renderPlot = (plotData: Partial<PlotData>[], plotType: string) => (
-        <Plot
-            data={plotData}
-            layout={{
-                title: { text: titles[plotType].title },
-                xaxis: { title: { text: titles[plotType].xaxis } },
-                yaxis: { title: { text: titles[plotType].yaxis } },
-                dragmode: selectedTab === "IV" && ivSelecting ? "select" : false,
-                autosize: true,
-                margin: { t: 40, l: 50, r: 20, b: 100 },
-                paper_bgcolor: "rgba(0,0,0,0)",
-                plot_bgcolor: "rgba(0,0,0,0)",
-            }}
-            config={{
-                scrollZoom: true,
-                displayModeBar: false,
-                responsive: true,
-            }}
-            useResizeHandler
-            style={{ width: "100%", height: containerHeight - 100, flexGrow: 1 }}
-            onSelected={onSelected}
-        />
-    );
+    const renderPlot = (plotData: Partial<PlotData>[], plotType: string) => {
+        // 矩形用のshapeを準備
+        const shapes = [];
+
+        if (selectedTab === "IV" && ivSelecting && ivSelectedRange) {
+            const [xMin, xMax] = ivSelectedRange;
+            shapes.push({
+                type: 'rect' as const,
+                xref: 'x'as const,
+                yref: 'paper'as const,
+                x0: xMin,
+                x1: xMax,
+                y0: 0,
+                y1: 1,
+                fillcolor: 'rgba(0, 123, 255, 0.3)',  // 青色半透明
+                line: {
+                    width: 0,
+                },
+                layer: 'below' as const,
+            });
+        }
+
+        return (
+            <Plot
+                data={plotData}
+                layout={{
+                    title: { text: titles[plotType].title },
+                    xaxis: { title: { text: titles[plotType].xaxis } },
+                    yaxis: { title: { text: titles[plotType].yaxis } },
+                    dragmode: selectedTab === "IV" && ivSelecting ? "select" : false,
+                    autosize: true,
+                    margin: { t: 40, l: 50, r: 20, b: 100 },
+                    paper_bgcolor: "rgba(0,0,0,0)",
+                    plot_bgcolor: "rgba(0,0,0,0)",
+                    shapes: shapes,  // ここに矩形をセット
+                }}
+                config={{
+                    scrollZoom: true,
+                    displayModeBar: false,
+                    responsive: true,
+                }}
+                useResizeHandler
+                style={{ width: "100%", height: containerHeight - 100, flexGrow: 1 }}
+                onSelected={onSelected}
+            />
+        );
+    };
+
 
     return (
         <div style={{ height: containerHeight }} className="w-full flex">

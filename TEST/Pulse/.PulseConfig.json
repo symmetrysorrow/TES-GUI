@@ -1,0 +1,19 @@
+{
+  "Readout": {
+    "Sample": 10000,
+    "PreSample": 1000,
+    "Rate": 1000000.0
+  },
+  "Analysis": {
+    "CutoffFrequency": 10000.0,
+    "BaseLinePreSample": 250,
+    "BaseLinePostSample": 250,
+    "PeakSearchSample": 10000,
+    "PeakAveragePreSample": 10,
+    "PeakAveragePostSample": 90,
+    "RiseHighRatio": 0.9,
+    "RiseLowRatio": 0.1,
+    "DecayHighRatio": 0.9,
+    "DecayLowRatio": 0.1
+  }
+}

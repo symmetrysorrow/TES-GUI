@@ -1,32 +1,43 @@
 import { useEffect, useRef, useState } from "react";
 import Plot from "react-plotly.js";
-import {PlotData} from "plotly.js";
-import { PlotlyHTMLElement } from "plotly.js";
-import {invoke} from "@tauri-apps/api/core";
+import { PlotData, PlotlyHTMLElement } from "plotly.js";
+import { invoke } from "@tauri-apps/api/core";
+import {Tab, TabGroup, TabList,TabPanels,TabPanel} from "@headlessui/react";
 
 interface RTData {
     [current: string]: {
         Temp: number[];
         R_tes: number[];
+        Alpha: number[];
+        BiasPoint: number[];
     };
 }
 
 const RTContent = ({ folderPath, tabId }: any) => {
     const plotRef = useRef<PlotlyHTMLElement | null>(null);
-
+    //const containerRef = useRef<HTMLDivElement | null>(null);
+    const [containerHeight, setContainerHeight] = useState<number>(window.innerHeight);
 
     const [data, setData] = useState<RTData | null>(null);
-    useEffect(() => {
-        console.log("RTContent useEffect called with folderPath:", folderPath, "tabId:", tabId);
-
+    useEffect( () => {
         invoke<RTData>("GetRTCommand", { tabName: tabId })
-            .then((res) => {
-                setData(res);
-            })
+            .then((res) => setData(res))
             .catch((err) => {
                 console.error("データ取得エラー:", err);
                 alert("データ取得に失敗しました");
             });
+    }, []);
+
+    // Plot リサイズを強制管理
+    useEffect(() => {
+        const resize = () => {
+            const headerHeight = 80; // 例えば TopToolbar の高さなど
+            const margin = 10; // パディングなどあれば
+            setContainerHeight(window.innerHeight - headerHeight - margin);
+        };
+        resize(); // 初期実行
+        window.addEventListener("resize", resize);
+        return () => window.removeEventListener("resize", resize);
     }, []);
 
     useEffect(() => {
@@ -38,7 +49,7 @@ const RTContent = ({ folderPath, tabId }: any) => {
         let lastY = 0;
 
         const handleMouseDown = (e: MouseEvent) => {
-            if (e.button === 2) { // 中央ボタン（ミドルクリック）
+            if (e.button === 2) {
                 e.preventDefault();
                 isRightDragging = true;
                 lastX = e.clientX;
@@ -59,7 +70,7 @@ const RTContent = ({ folderPath, tabId }: any) => {
                 const height = plotEl.clientHeight;
 
                 if (xRange && yRange && width > 0 && height > 0) {
-                    const xScale = (xRange[1] - xRange[0]) / width;   // [実座標]/[画素] = 1pxあたりの移動量
+                    const xScale = (xRange[1] - xRange[0]) / width;
                     const yScale = (yRange[1] - yRange[0]) / height;
 
                     window.Plotly.relayout(plotEl, {
@@ -69,8 +80,6 @@ const RTContent = ({ folderPath, tabId }: any) => {
                         "yaxis.range[1]": yRange[1] + dy * yScale,
                     });
                 }
-
-
             }
         };
 
@@ -78,9 +87,7 @@ const RTContent = ({ folderPath, tabId }: any) => {
             isRightDragging = false;
         };
 
-        const handleContextMenu = (e: MouseEvent) => {
-            e.preventDefault(); // 中央クリックのコンテキストメニューを無効化
-        }
+        const handleContextMenu = (e: MouseEvent) => e.preventDefault();
 
         plotEl.addEventListener("mousedown", handleMouseDown);
         window.addEventListener("mousemove", handleMouseMove);
@@ -94,7 +101,7 @@ const RTContent = ({ folderPath, tabId }: any) => {
         };
     }, []);
 
-    const plotData: Partial<PlotData>[] = data
+    const RTPlotData: Partial<PlotData>[] = data
         ? Object.entries(data).map(([current, { Temp, R_tes }]) => ({
             x: Temp,
             y: R_tes,
@@ -104,28 +111,85 @@ const RTContent = ({ folderPath, tabId }: any) => {
         }))
         : [];
 
+    const ABPlotData: Partial<PlotData>[] = data
+        ? Object.entries(data).map(([current, { BiasPoint, Alpha }]) => ({
+            x: BiasPoint,
+            y: Alpha,
+            type: "scatter",
+            mode: "lines+markers",
+            name: `${current} µA`,
+        }))
+        : [];
+
     return (
-        <div className="flex-grow min-height: 0">
-            <Plot
-                ref={(node: any) => {
-                    if (node && node.el) {
-                        plotRef.current = node.el as Plotly.PlotlyHTMLElement;
-                    }
-                }}
-                data={plotData}
-                layout={{
-                    dragmode: false, // 左クリックドラッグ無効
-                    autosize: true,  // 自動サイズ調整
-                }}
-                config={{
-                    scrollZoom: true,
-                    displayModeBar: false,
-                }}
-                useResizeHandler={true} // ← これが重要！
-                style={{ width: "auto", height: "100%" }} // フルサイズ
-                className="max-h-[100%] flex-grow"
-            />
+        <div
+            style={{ height: containerHeight, width: "100%" }}
+            className="w-full flex flex-col"
+        >
+            <TabGroup className="flex flex-1 flex-col w-full mx-auto text-white" id="rt-tabs-container">
+                <TabList className="flex p-1 bg-zinc-800 rounded-full w-fit mx-auto">
+                    {["RT", "Alpha"].map((label) => (
+                        <Tab
+                            key={label}
+                            className={({ selected }) =>
+                                `px-2 py-1 rounded-full text-sm font-medium transition-colors duration-200
+                            ${selected ? "text-zinc-900 shadow" : "text-white hover:bg-zinc-700"}`
+                            }
+                        >
+                            {label}
+                        </Tab>
+                    ))}
+                </TabList>
+
+                <TabPanels className="w-full flex-grow flex flex-col h-full min-h-0">
+                    <TabPanel className="flex-grow flex min-h-0">
+                        <Plot
+                            ref={(node: any) => {
+                                if (node?.el) {
+                                    plotRef.current = node.el as Plotly.PlotlyHTMLElement;
+                                }
+                            }}
+                            data={RTPlotData}
+                            layout={{
+                                dragmode: false,
+                                autosize: true,
+                                margin: { t: 20, l: 40, r: 20, b: 40 },
+                            }}
+                            config={{
+                                scrollZoom: true,
+                                displayModeBar: false,
+                                responsive: true,
+                            }}
+                            useResizeHandler={true}
+                            style={{ width: "100%", height: "100%", flexGrow: 1 }}
+                        />
+                    </TabPanel>
+                    <TabPanel className="flex-grow flex min-h-0">
+                        <Plot
+                            ref={(node: any) => {
+                                if (node?.el) {
+                                    plotRef.current = node.el as Plotly.PlotlyHTMLElement;
+                                }
+                            }}
+                            data={ABPlotData}
+                            layout={{
+                                dragmode: false,
+                                autosize: true,
+                                margin: { t: 20, l: 40, r: 20, b: 40 },
+                            }}
+                            config={{
+                                scrollZoom: true,
+                                displayModeBar: false,
+                                responsive: true,
+                            }}
+                            useResizeHandler={true}
+                            style={{ width: "100%", height: "100%", flexGrow: 1 }}
+                        />
+                    </TabPanel>
+                </TabPanels>
+            </TabGroup>
         </div>
+
     );
 };
 

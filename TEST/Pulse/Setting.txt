@@ -1,0 +1,15 @@
+20250123
+Max Input
+Minimum Input
+Rate
+Samples/Channels
+Samples_to_Log
+Pretrigger_Samples
+Threshold
+10.000000
+-10.000000
+500000.000000
+100000.000000
+100000.000000
+5000.000000
+1.000000E-5

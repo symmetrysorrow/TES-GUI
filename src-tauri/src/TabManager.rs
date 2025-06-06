@@ -257,13 +257,25 @@ pub fn GetRTCommand(TabName: String) -> Result<serde_json::Value, String> {
                 let I_bias = p
                     .R_tes_Current
                     .get(&crt)
-                    .ok_or(format!("No Temp Data for Current {}", crt))?
+                    .ok_or(format!("No I_bias Data for Current {}", crt))?
                     .to_vec();
-                result.insert(
+                let Alpha=p
+                    .Alpha_Current
+                    .get(&crt)
+                    .ok_or(format!("No Alpha Data for Current {}", crt))?
+                    .to_vec();
+                let BiasPoint=p
+                    .BiasPoints_Current
+                    .get(&crt)
+                    .ok_or(format!("No BiasPoint Data for Current {}", crt))?
+                    .to_vec();
+                    result.insert(
                     crt.to_string(),
                     serde_json::json!({
                         "Temp": Temp,
                         "R_tes": I_bias,
+                        "Alpha": Alpha,
+                        "BiasPoint": BiasPoint,
                     }),
                 );
             }

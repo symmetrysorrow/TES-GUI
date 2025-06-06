@@ -22,6 +22,8 @@ pub struct RTProcessorS {
     pub R_tes_Current: HashMap<u32, Vec<f64>>,
     pub Temp_Current: HashMap<u32, Vec<f64>>,
     eta: f64,
+    pub BiasPoints_Current:HashMap<u32, Vec<f64>>,
+    pub Alpha_Current:HashMap<u32, Vec<f64>>,
 }
 
 impl RTProcessorS {
@@ -33,6 +35,8 @@ impl RTProcessorS {
             R_tes_Current: HashMap::new(),
             Temp_Current: HashMap::new(),
             eta: 104.0,
+            BiasPoints_Current:HashMap::new(),
+            Alpha_Current: HashMap::new(),
         }
     }
 
@@ -135,6 +139,9 @@ impl RTProcessorS {
                 Alpha.push((TAlpha[i] * diff_R[i]) / RAlpha[i]);
                 BiasPoint.push(100. * RAlpha[i] / RN);
             }
+            
+            self.BiasPoints_Current.insert(*crt, BiasPoint);
+            self.Alpha_Current.insert(*crt, Alpha);
         }
         return Ok(());
     }
@@ -214,9 +221,9 @@ impl DataProcessorT for RTProcessorS {
             //println!("Temp_Current: {}", temp);
             println!("eta: {}", self.eta);
         }
-
+        
+        self.FitRT()?;
         self.SaveRT()?;
-
         return Ok(());
     }
 }

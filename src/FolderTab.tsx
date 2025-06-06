@@ -46,7 +46,9 @@ const DynamicTabs = () => {
     const NewTabContent: React.FC<{ id: string }> = () => (
         <div className="flex flex-col h-full">
             <FolderDropArea>
-                <Button onClick={handleDialog}>フォルダを開く</Button>
+                <Button onClick={handleDialog}>
+                    フォルダを開く
+                </Button>
             </FolderDropArea>
         </div>
     );
@@ -188,33 +190,31 @@ const DynamicTabs = () => {
                     }
                 }
             }}
-            className="flex flex-1 flex-col  w-full mx-auto bg-zinc-900 text-white" id="dynamic-tabs-container"
+            className="flex flex-1 flex-col  w-full mx-auto text-white" id="dynamic-tabs-container"
         >
-            <TabList className="flex flex-shrink-0 p-1">
+            <TabList className="flex flex-shrink-0 p-0.5 bg-zinc-900">
                 {tabs.map((tab) => (
                     <Tab
                         key={tab.id}
                         className={({ selected }) =>
-                            `flex justify-between items-center gap-2 px-4 py-2 rounded-md cursor-pointer hover:bg-zinc-800
-            ${selected ? "bg-zinc-700" : "bg-transparent"}`
+                            `flex justify-between items-center gap-2 px-1 py-1 rounded-md cursor-pointer hover:bg-zinc-800
+                        ${selected ? "bg-zinc-700" : "bg-transparent"}`
                         }
-                        type="button"
                     >
-                        <span className="truncate text-sm">{tab.title}</span>
+                        <span className="truncate text-sm ml-1 mr-1">{tab.title}</span>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 removeTab(tab.id);
                             }}
-                            className="text-white hover:text-red-400"
-                            type="button"
+                            className="text-white hover:text-red-400 mr-1"
                         >
                             ×
                         </button>
                     </Tab>
                 ))}
                 <button
-                    className="text-white hover:bg-zinc-800 ml-2 p-2 rounded-md"
+                    className="text-white hover:bg-zinc-800 ml-1 p-1 rounded-md"
                     onClick={addTab}
                     type="button"
                 >
@@ -226,7 +226,7 @@ const DynamicTabs = () => {
             <TopToolbar />
 
 
-            <TabPanels className="w-full flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
+            <TabPanels className="text-black flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
                 {tabs.map((tab) => (
                     <TabPanel unmount={false} key={tab.id} className="w-full flex-grow flex flex-col" id="tab-panel">
                         {tab.content()}

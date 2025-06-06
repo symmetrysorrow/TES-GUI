@@ -201,6 +201,10 @@ pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
             let mut result = serde_json::Map::new();
 
             for &temp in &p.Temps {
+                let index=p.CurrentIndex_temps
+                    .get(&temp)
+                    .ok_or(format!("Temp {} not found", temp))?;
+
                 let I_bias = p
                     .I_bias_temps
                     .get(&temp)
@@ -210,16 +214,19 @@ pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
                     .V_out_history_temps
                     .get(&temp)
                     .ok_or(format!("No V_out data for temp {}", temp))?;
-                let v_out = v_out_vec
-                    .first()
-                    .ok_or(format!("No V_out vector data for temp {}", temp))?
+                let v_out = v_out_vec[*index as usize]
                     .to_vec();
-
+                let R_tes=p
+                    .R_tes_temps
+                    .get(&temp)
+                    .ok_or(format!("No R_tes data for temp {}", temp))?
+                    .to_vec();
                 result.insert(
                     temp.to_string(),
                     serde_json::json!({
                         "I_bias": I_bias,
-                        "v_out": v_out,
+                        "V_out": v_out,
+                        "R_tes": R_tes,
                     }),
                 );
             }

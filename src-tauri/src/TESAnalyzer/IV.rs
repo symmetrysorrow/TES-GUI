@@ -201,6 +201,7 @@ impl IVProcessorS {
         }
 
         self.SaveCalibrated()?;
+        self.CalculateR_TES()?;
 
         return Ok(());
     }
@@ -289,7 +290,7 @@ impl IVProcessorS {
         }
 
         self.SaveCalibrated()?;
-
+        self.CalculateR_TES()?;
         return Ok(());
     }
 
@@ -516,6 +517,7 @@ impl DataProcessorT for IVProcessorS {
                 }
             }
         }
+        self.CalculateR_TES()?;
         Ok(())
     }
 }

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import IVContent from "@/IVContent";
+import IVContent from "@/TESAnalyzer/IVContent.tsx";
 import PulseContent from "@/PulseContent";
-import RTContent from "@/RTContent.tsx";
+import RTContent from "@/TESAnalyzer/RTContent.tsx";
 import { TargetEnum, useTargetState } from "@/TargetContext.tsx";
 
 type TabItem = {
@@ -128,11 +128,11 @@ const DynamicTabs = () => {
             switch (folderType) {
                 case "IV":
                     targetType = TargetEnum.IV;
-                    content = () => <IVContent folderPath={folderPath} tabId={tabId} />;
+                    content = () => <IVContent tabId={tabId} />;
                     break;
                 case "RT":
                     targetType = TargetEnum.RT;
-                    content = () => <RTContent folderPath={folderPath} tabId={tabId} />;
+                    content = () => <RTContent tabId={tabId} />;
                     break;
                 case "Pulse":
                     targetType = TargetEnum.Pulse;
@@ -192,7 +192,7 @@ const DynamicTabs = () => {
             }}
             className="flex flex-1 flex-col  w-full mx-auto text-white" id="dynamic-tabs-container"
         >
-            <TabList className="flex flex-shrink-0 p-0.5 bg-zinc-900">
+            <TabList className="flex flex-shrink-0 items-center p-0.5 bg-zinc-900">
                 {tabs.map((tab) => (
                     <Tab
                         key={tab.id}
@@ -202,7 +202,7 @@ const DynamicTabs = () => {
                         }
                     >
                         <span className="truncate text-sm ml-1 mr-1">{tab.title}</span>
-                        <button
+                        <div
                             onClick={(e) => {
                                 e.stopPropagation();
                                 removeTab(tab.id);
@@ -210,16 +210,15 @@ const DynamicTabs = () => {
                             className="text-white hover:text-red-400 mr-1"
                         >
                             ×
-                        </button>
+                        </div>
                     </Tab>
                 ))}
-                <button
-                    className="text-white hover:bg-zinc-800 ml-1 p-1 rounded-md"
+                <div
+                    className="text-white hover:bg-zinc-800 ml-1 p-1 rounded-md items-center justify-center"
                     onClick={addTab}
-                    type="button"
                 >
                     <Plus size={20} />
-                </button>
+                </div>
             </TabList>
 
 

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { PlotData, PlotlyHTMLElement } from "plotly.js";
 import { invoke } from "@tauri-apps/api/core";
-import {Tab, TabGroup, TabList,TabPanels,TabPanel} from "@headlessui/react";
+import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
 
 interface RTData {
     [current: string]: {
@@ -13,127 +13,138 @@ interface RTData {
     };
 }
 
-const RTContent = ({ folderPath, tabId }: any) => {
-    const plotRef = useRef<PlotlyHTMLElement | null>(null);
-    //const containerRef = useRef<HTMLDivElement | null>(null);
-    const [containerHeight, setContainerHeight] = useState<number>(window.innerHeight);
+const HEADER_HEIGHT = 80;
+const MARGIN_BOTTOM = 10;
 
+const RTContent = ({ folderPath, tabId }: { folderPath: string; tabId: string }) => {
+    const plotRef = useRef<PlotlyHTMLElement | null>(null);
+    const [containerHeight, setContainerHeight] = useState<number>(window.innerHeight);
     const [data, setData] = useState<RTData | null>(null);
-    useEffect( () => {
+
+    useEffect(() => {
         invoke<RTData>("GetRTCommand", { tabName: tabId })
-            .then((res) => setData(res))
+            .then(setData)
             .catch((err) => {
                 console.error("データ取得エラー:", err);
                 alert("データ取得に失敗しました");
             });
-    }, []);
+    }, [tabId]);
 
-    // Plot リサイズを強制管理
     useEffect(() => {
-        const resize = () => {
-            const headerHeight = 80; // 例えば TopToolbar の高さなど
-            const margin = 10; // パディングなどあれば
-            setContainerHeight(window.innerHeight - headerHeight - margin);
-        };
-        resize(); // 初期実行
+        const resize = () => setContainerHeight(window.innerHeight - HEADER_HEIGHT - MARGIN_BOTTOM);
+        resize();
         window.addEventListener("resize", resize);
         return () => window.removeEventListener("resize", resize);
     }, []);
 
-    useEffect(() => {
-        const plotEl = plotRef.current;
-        if (!plotEl) return;
+    const setupRightClickDrag = useCallback(() => {
+        const el = plotRef.current;
+        if (!el) return;
 
-        let isRightDragging = false;
-        let lastX = 0;
-        let lastY = 0;
+        let dragging = false, lastX = 0, lastY = 0;
 
-        const handleMouseDown = (e: MouseEvent) => {
+        const onDown = (e: MouseEvent) => {
             if (e.button === 2) {
                 e.preventDefault();
-                isRightDragging = true;
-                lastX = e.clientX;
-                lastY = e.clientY;
+                dragging = true;
+                [lastX, lastY] = [e.clientX, e.clientY];
             }
         };
 
-        const handleMouseMove = (e: MouseEvent) => {
-            if (isRightDragging && plotEl) {
-                const dx = e.clientX - lastX;
-                const dy = e.clientY - lastY;
-                lastX = e.clientX;
-                lastY = e.clientY;
+        const onMove = (e: MouseEvent) => {
+            if (!dragging || !el) return;
+            const dx = e.clientX - lastX;
+            const dy = e.clientY - lastY;
+            lastX = e.clientX;
+            lastY = e.clientY;
 
-                const xRange = plotEl.layout.xaxis.range;
-                const yRange = plotEl.layout.yaxis.range;
-                const width = plotEl.clientWidth;
-                const height = plotEl.clientHeight;
+            const { range: xRange } = el.layout.xaxis || {};
+            const { range: yRange } = el.layout.yaxis || {};
+            const { clientWidth: w, clientHeight: h } = el;
 
-                if (xRange && yRange && width > 0 && height > 0) {
-                    const xScale = (xRange[1] - xRange[0]) / width;
-                    const yScale = (yRange[1] - yRange[0]) / height;
+            if (xRange && yRange && w && h) {
+                const xScale = (xRange[1] - xRange[0]) / w;
+                const yScale = (yRange[1] - yRange[0]) / h;
 
-                    window.Plotly.relayout(plotEl, {
-                        "xaxis.range[0]": xRange[0] - dx * xScale,
-                        "xaxis.range[1]": xRange[1] - dx * xScale,
-                        "yaxis.range[0]": yRange[0] + dy * yScale,
-                        "yaxis.range[1]": yRange[1] + dy * yScale,
-                    });
-                }
+                window.Plotly.relayout(el, {
+                    "xaxis.range[0]": xRange[0] - dx * xScale,
+                    "xaxis.range[1]": xRange[1] - dx * xScale,
+                    "yaxis.range[0]": yRange[0] + dy * yScale,
+                    "yaxis.range[1]": yRange[1] + dy * yScale,
+                });
             }
         };
 
-        const handleMouseUp = () => {
-            isRightDragging = false;
-        };
+        const cleanup = () => (dragging = false);
+        const blockContext = (e: MouseEvent) => e.preventDefault();
 
-        const handleContextMenu = (e: MouseEvent) => e.preventDefault();
-
-        plotEl.addEventListener("mousedown", handleMouseDown);
-        window.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("mouseup", handleMouseUp);
-        plotEl.addEventListener("contextmenu", handleContextMenu);
+        el.addEventListener("mousedown", onDown);
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", cleanup);
+        el.addEventListener("contextmenu", blockContext);
 
         return () => {
-            plotEl.removeEventListener("mousedown", handleMouseDown);
-            window.removeEventListener("mousemove", handleMouseMove);
-            window.removeEventListener("mouseup", handleMouseUp);
+            el.removeEventListener("mousedown", onDown);
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", cleanup);
+            el.removeEventListener("contextmenu", blockContext);
         };
     }, []);
 
-    const RTPlotData: Partial<PlotData>[] = data
-        ? Object.entries(data).map(([current, { Temp, R_tes }]) => ({
-            x: Temp,
-            y: R_tes,
-            type: "scatter",
-            mode: "lines+markers",
-            name: `${current} µA`,
-        }))
-        : [];
+    useEffect(() => {
+        const clean = setupRightClickDrag();
+        return () => clean?.();
+    }, [setupRightClickDrag]);
 
-    const ABPlotData: Partial<PlotData>[] = data
-        ? Object.entries(data).map(([current, { BiasPoint, Alpha }]) => ({
-            x: BiasPoint,
-            y: Alpha,
-            type: "scatter",
-            mode: "lines+markers",
-            name: `${current} µA`,
-        }))
-        : [];
+    const createPlotData = useCallback(
+        (xKey: keyof RTData[string], yKey: keyof RTData[string]): Partial<PlotData>[] =>
+            data
+                ? Object.entries(data).map(([current, entry]): Partial<PlotData> => ({
+                    x: entry[xKey],
+                    y: entry[yKey],
+                    type: "scatter",
+                    mode: "lines+markers",
+                    name: `${current} µA`,
+                }))
+                : [],
+        [data]
+    );
+
+
+    const renderPlot = (plotData: Partial<PlotData>[]) => (
+        <Plot
+            ref={(node: any) => {
+                if (node?.el) plotRef.current = node.el as PlotlyHTMLElement;
+            }}
+            data={plotData}
+            layout={{
+                dragmode: false,
+                autosize: true,
+                margin: { t: 20, l: 40, r: 20, b: 40 },
+                paper_bgcolor: "rgba(0,0,0,0)",
+                plot_bgcolor: "rgba(0,0,0,0)",
+            }}
+            config={{
+                scrollZoom: true,
+                displayModeBar: false,
+                responsive: true,
+            }}
+            useResizeHandler
+            style={{ width: "100%", height: "100%", flexGrow: 1 }}
+        />
+    );
 
     return (
-        <div
-            style={{ height: containerHeight, width: "100%" }}
-            className="w-full flex flex-col"
-        >
-            <TabGroup className="flex flex-1 flex-col w-full mx-auto text-white" id="rt-tabs-container">
+        <div style={{ height: containerHeight }} className="w-full flex flex-col">
+            <TabGroup className="flex flex-1 flex-col w-full mx-auto text-white">
                 <TabList className="flex p-1 bg-zinc-800 rounded-full w-fit mx-auto">
                     {["RT", "Alpha"].map((label) => (
                         <Tab
                             key={label}
                             className={({ selected }) =>
-                                `px-2 py-1 rounded-full text-sm font-medium transition-colors duration-200
-                            ${selected ? "text-zinc-900 shadow" : "text-white hover:bg-zinc-700"}`
+                                `px-2 py-1 rounded-full text-sm font-medium transition-colors duration-200 ${
+                                    selected ? "text-zinc-900 shadow" : "text-white hover:bg-zinc-700"
+                                }`
                             }
                         >
                             {label}
@@ -143,53 +154,14 @@ const RTContent = ({ folderPath, tabId }: any) => {
 
                 <TabPanels className="w-full flex-grow flex flex-col h-full min-h-0">
                     <TabPanel className="flex-grow flex min-h-0">
-                        <Plot
-                            ref={(node: any) => {
-                                if (node?.el) {
-                                    plotRef.current = node.el as Plotly.PlotlyHTMLElement;
-                                }
-                            }}
-                            data={RTPlotData}
-                            layout={{
-                                dragmode: false,
-                                autosize: true,
-                                margin: { t: 20, l: 40, r: 20, b: 40 },
-                            }}
-                            config={{
-                                scrollZoom: true,
-                                displayModeBar: false,
-                                responsive: true,
-                            }}
-                            useResizeHandler={true}
-                            style={{ width: "100%", height: "100%", flexGrow: 1 }}
-                        />
+                        {renderPlot(createPlotData("Temp", "R_tes"))}
                     </TabPanel>
                     <TabPanel className="flex-grow flex min-h-0">
-                        <Plot
-                            ref={(node: any) => {
-                                if (node?.el) {
-                                    plotRef.current = node.el as Plotly.PlotlyHTMLElement;
-                                }
-                            }}
-                            data={ABPlotData}
-                            layout={{
-                                dragmode: false,
-                                autosize: true,
-                                margin: { t: 20, l: 40, r: 20, b: 40 },
-                            }}
-                            config={{
-                                scrollZoom: true,
-                                displayModeBar: false,
-                                responsive: true,
-                            }}
-                            useResizeHandler={true}
-                            style={{ width: "100%", height: "100%", flexGrow: 1 }}
-                        />
+                        {renderPlot(createPlotData("BiasPoint", "Alpha"))}
                     </TabPanel>
                 </TabPanels>
             </TabGroup>
         </div>
-
     );
 };
 

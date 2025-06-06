@@ -17,7 +17,7 @@ pub struct IVProcessorS {
     pub V_out_history_temps: HashMap<u32, Vec<Array1<f64>>>,
     pub R_tes_temps: HashMap<u32, Array1<f64>>,
     pub Temps: Vec<u32>,
-    pub CurrentIndex_temps: HashMap<u32, u32>,
+    pub CurrentIndex:usize,
     TESAConfig: TESAnalysisConfig,
 }
 
@@ -59,7 +59,7 @@ impl IVProcessorS {
             V_out_history_temps: HashMap::new(),
             R_tes_temps: HashMap::new(),
             Temps: vec![],
-            CurrentIndex_temps: HashMap::new(),
+            CurrentIndex: 0,
             TESAConfig: TESAnalysisConfig {
                 R_sh: 3.9e-3,
                 LinerFitSample: 10,
@@ -72,10 +72,6 @@ impl IVProcessorS {
 
     pub fn GetEta(&self) -> Result<f64, String> {
         let LeastTemp = self.Temps.iter().min().ok_or("Failed to Find iter min.")?;
-        let Index = self
-            .CurrentIndex_temps
-            .get(LeastTemp)
-            .ok_or(format!("Index at temperature:{}mk is not found.", LeastTemp).to_string())?;
         let I_bias = self
             .I_bias_temps
             .get(LeastTemp)
@@ -84,7 +80,7 @@ impl IVProcessorS {
             .V_out_history_temps
             .get(LeastTemp)
             .ok_or(format!("V_out at Temperature:{}mk is not found.", LeastTemp).to_string())?
-            [*Index as usize]
+            [self.CurrentIndex]
             .clone();
         if self.TESAConfig.LinerFitSample > I_bias.len() as u32
             || self.TESAConfig.LinerFitSample > V_out.len() as u32
@@ -110,11 +106,9 @@ impl IVProcessorS {
         }
         for temp in self.Temps.iter() {
             if let Some(V_out_history) = self.V_out_history_temps.get(temp) {
-                if let Some(CurrentIndex) = self.CurrentIndex_temps.get(temp) {
-                    let index = *CurrentIndex as usize;
-                    let SavePath = CalibPath.join(format!("{}mk.dat", temp));
-                    SaveTxt(SavePath.as_path(), &V_out_history[index].to_vec())?;
-                }
+                let SavePath = CalibPath.join(format!("{}mk.dat", temp));
+                SaveTxt(SavePath.as_path(), &V_out_history[self.CurrentIndex].to_vec())?;
+                
             }
         }
         return Ok(());
@@ -126,59 +120,61 @@ impl IVProcessorS {
         CalibStartI_bias: f64,
         CalibEndI_bias: f64,
     ) -> Result<(), String> {
-        let CurrentIndex = self
-            .CurrentIndex_temps
-            .get(&temp)
-            .ok_or(format!("Index at temperature:{} is not found", temp).to_string())?
-            .clone();
+        // 1. 選択された温度の履歴をトリミング（CurrentIndex以降を削除）
+        if let Some(history) = self.V_out_history_temps.get_mut(&temp) {
+            history.truncate(self.CurrentIndex + 1);
+        }
+
+        // 2. 現在のV_outを取得
         let mut V_out = self
             .V_out_history_temps
             .get(&temp)
-            .ok_or(format!("V_out at temperature:{} is not found", temp).to_string())?
-            [CurrentIndex as usize]
+            .ok_or(format!("V_out at temperature:{} is not found", temp))?
+            [self.CurrentIndex]
             .clone();
+
         let I_bias = self
             .I_bias_temps
             .get(&temp)
-            .ok_or(format!("I_bias at temperature:{} is not found", temp).to_string())?;
+            .ok_or(format!("I_bias at temperature:{} is not found", temp))?;
 
         let CalibStartIndex = I_bias
             .iter()
             .position(|&x| x >= CalibStartI_bias)
-            .ok_or("")?;
-        let CalibEndIndex = I_bias.iter().position(|&x| x >= CalibEndI_bias).ok_or("")?;
+            .ok_or("CalibStartI_bias is out of range")?;
+        let CalibEndIndex = I_bias
+            .iter()
+            .position(|&x| x >= CalibEndI_bias)
+            .ok_or("CalibEndI_bias is out of range")?;
 
         let V_out_Target = V_out.slice(s![CalibStartIndex..CalibEndIndex]).to_owned();
-        // 隣接する値の差分を計算
+
         let diff: Vec<f64> = V_out_Target
             .windows(2usize) // 2要素のウィンドウを取得
             .into_iter() // イテレータに変換
             .map(|w| (w[1] - w[0]).abs()) // 差分の絶対値を計算
             .collect();
-        // 最も差が大きい位置（ジャンプ）のインデックスを特定
+
         let mut JumpIndex = diff
             .iter()
             .enumerate()
             .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
             .map(|(i, _)| i)
-            .unwrap_or(0); // 空の場合は 0 にする
+            .unwrap_or(0);
 
         JumpIndex += CalibStartIndex;
 
+        let fit_sample = self.TESAConfig.LinerFitSample as usize;
         let mut LinerFitStartIndex = 0;
-        let mut LinerFitEndIndex = LinerFitStartIndex + self.TESAConfig.LinerFitSample as usize;
+        let mut LinerFitEndIndex = fit_sample;
 
-        if JumpIndex - self.TESAConfig.LinerFitSample as usize > 0 {
+        if JumpIndex > fit_sample {
             LinerFitEndIndex = JumpIndex;
-            LinerFitStartIndex = JumpIndex - self.TESAConfig.LinerFitSample as usize;
+            LinerFitStartIndex = JumpIndex - fit_sample;
         }
 
-        let I_bias_LinerFit = I_bias
-            .slice(s![LinerFitStartIndex..LinerFitEndIndex])
-            .to_owned();
-        let V_out_LinerFit = V_out
-            .slice(s![LinerFitStartIndex..LinerFitEndIndex])
-            .to_owned();
+        let I_bias_LinerFit = I_bias.slice(s![LinerFitStartIndex..LinerFitEndIndex]).to_owned();
+        let V_out_LinerFit = V_out.slice(s![LinerFitStartIndex..LinerFitEndIndex]).to_owned();
 
         let a = LinerFit(&I_bias_LinerFit, &V_out_LinerFit)?;
 
@@ -188,7 +184,7 @@ impl IVProcessorS {
             - V_out[JumpIndex + 1];
 
         V_out
-            .slice_mut(s![JumpIndex + 1usize..])
+            .slice_mut(s![JumpIndex + 1..])
             .iter_mut()
             .for_each(|x| *x += CalibAmount);
 
@@ -196,15 +192,26 @@ impl IVProcessorS {
             V_out_history.push(V_out);
         }
 
-        if let Some(CurrentIndex) = self.CurrentIndex_temps.get_mut(&temp) {
-            *CurrentIndex += 1;
+        // 3. 選択されたtemp以外の履歴にも現在の値を追加
+        for (&other_temp, history) in self.V_out_history_temps.iter_mut() {
+            if other_temp != temp {
+                if history.len() > self.CurrentIndex {
+                    let current = history[self.CurrentIndex].clone();
+                    history.truncate(self.CurrentIndex + 1);
+                    history.push(current);
+                }
+            }
         }
+
+        // 4. 共通のインデックスをインクリメント
+        self.CurrentIndex += 1;
 
         self.SaveCalibrated()?;
         self.CalculateR_TES()?;
 
-        return Ok(());
+        Ok(())
     }
+
 
     pub fn CalibrateMultipleJump(
         &mut self,
@@ -212,36 +219,29 @@ impl IVProcessorS {
         CalibStartI_bias: f64,
         CalibEndI_bias: f64,
     ) -> Result<(), String> {
-        let CurrentIndex = self
-            .CurrentIndex_temps
-            .get(&temp)
-            .ok_or(format!("Index at Temperature:{}mk is not found.", temp).to_string())?
-            .clone();
+        // 選択された温度の現在のV_outを取得
         let mut V_out = self
             .V_out_history_temps
             .get(&temp)
-            .ok_or(format!("V_out at Temperature:{}mk is not found.", temp).to_string())?
-            [CurrentIndex as usize]
+            .ok_or(format!("V_out at Temperature:{}mk is not found.", temp))?
+            [self.CurrentIndex]
             .clone();
         let I_bias = self
             .I_bias_temps
             .get(&temp)
-            .ok_or(format!("I_bias at Temperature:{}mk is not found.", temp).to_string())?;
+            .ok_or(format!("I_bias at Temperature:{}mk is not found.", temp))?;
 
-        let CalibStartIndex = I_bias
-            .iter()
-            .position(|&x| x >= CalibStartI_bias)
-            .ok_or("")?;
+        // 校正範囲のインデックスを計算
+        let CalibStartIndex = I_bias.iter().position(|&x| x >= CalibStartI_bias).ok_or("")?;
         let CalibEndIndex = I_bias.iter().position(|&x| x >= CalibEndI_bias).ok_or("")?;
 
         let V_out_Target = V_out.slice(s![CalibStartIndex..CalibEndIndex]).to_owned();
-        // 隣接する値の差分を計算
         let I_bias_Target = I_bias.slice(s![CalibStartIndex..CalibEndIndex]).to_owned();
 
         let mut CalibPoints = Vec::new();
 
+        // ジャンプポイントの検出（角度差で判定）
         for i in 0..(V_out_Target.len() - 2) {
-            // 3点取得
             let (y1, x1) = (V_out_Target[i], I_bias_Target[i]);
             let (y2, x2) = (V_out_Target[i + 1], I_bias_Target[i + 1]);
             let (y3, x3) = (V_out_Target[i + 2], I_bias_Target[i + 2]);
@@ -254,53 +254,68 @@ impl IVProcessorS {
             }
         }
 
+        // 線形フィット範囲の決定
         let mut LinerFitStartIndex = 0usize;
         let mut LinerFitEndIndex = LinerFitStartIndex + self.TESAConfig.LinerFitSample as usize;
-        if CalibPoints[0] as u32 <= self.TESAConfig.LinerFitSample {
-            LinerFitStartIndex = CalibPoints[0] + 1usize;
-            LinerFitEndIndex = CalibPoints[1];
+        if !CalibPoints.is_empty() && CalibPoints[0] as u32 <= self.TESAConfig.LinerFitSample {
+            LinerFitStartIndex = CalibPoints[0] + 1;
+            if CalibPoints.len() > 1 {
+                LinerFitEndIndex = CalibPoints[1];
+            }
         }
 
-        let I_bias_LinerFit = I_bias
-            .slice(s![LinerFitStartIndex..LinerFitEndIndex])
-            .to_owned();
-        let V_out_LinerFit = V_out
-            .slice(s![LinerFitStartIndex..LinerFitEndIndex])
-            .to_owned();
+        let I_bias_LinerFit = I_bias.slice(s![LinerFitStartIndex..LinerFitEndIndex]).to_owned();
+        let V_out_LinerFit = V_out.slice(s![LinerFitStartIndex..LinerFitEndIndex]).to_owned();
 
         let a = LinerFit(&I_bias_LinerFit, &V_out_LinerFit)?;
 
+        // 各ジャンプポイントで補正
         for point in CalibPoints {
             let CalibAmount =
-                a * (I_bias[point + 1usize] - I_bias[point]) + V_out[point] - V_out[point + 1usize];
+                a * (I_bias[point + 1] - I_bias[point]) + V_out[point] - V_out[point + 1];
             V_out
-                .slice_mut(s![point + 1usize..])
+                .slice_mut(s![point + 1..])
                 .iter_mut()
                 .for_each(|x| *x += CalibAmount);
         }
 
         Offset(&mut V_out);
 
+        // --- ここから改修部分 ---
+
+        // 全温度についてCurrentIndex以降の履歴を切り詰める
+        for (_t, history) in self.V_out_history_temps.iter_mut() {
+            if history.len() > self.CurrentIndex + 1 {
+                history.truncate(self.CurrentIndex + 1);
+            }
+        }
+
+        // 選択温度の履歴に今回の校正結果を追加
         if let Some(V_out_history) = self.V_out_history_temps.get_mut(&temp) {
             V_out_history.push(V_out);
         }
 
-        if let Some(CurrentIndex) = self.CurrentIndex_temps.get_mut(&temp) {
-            *CurrentIndex += 1;
+        // 選択温度以外は最後の履歴を複製して追加
+        for (&other_temp, V_out_history) in self.V_out_history_temps.iter_mut() {
+            if other_temp != temp {
+                if let Some(last) = V_out_history.last() {
+                    V_out_history.push(last.clone());
+                }
+            }
         }
+
+        self.CurrentIndex += 1;
 
         self.SaveCalibrated()?;
         self.CalculateR_TES()?;
-        return Ok(());
+
+        Ok(())
     }
+
 
     pub fn CalculateR_TES(&mut self) -> Result<(), String> {
         let Eta = self.GetEta()?;
         for temp in self.Temps.iter() {
-            let Index = self
-                .CurrentIndex_temps
-                .get(temp)
-                .ok_or(format!("Index at Temperature:{}mk is not found.", temp).to_string())?;
             let I_bias = self
                 .I_bias_temps
                 .get(temp)
@@ -309,7 +324,7 @@ impl IVProcessorS {
                 .V_out_history_temps
                 .get(temp)
                 .ok_or(format!("V_out at Temperature:{}mk is not found.", temp).to_string())?
-                [*Index as usize]
+                [self.CurrentIndex]
                 .clone();
             let I_TES = V_out * Eta;
             let I_sh = I_bias - &I_TES;
@@ -331,12 +346,11 @@ impl IVProcessorS {
         let mut all_v_vals = Vec::new();
 
         for temp in &self.Temps {
-            if let (Some(i), Some(v_vec), Some(idx)) = (
+            if let (Some(i), Some(v_vec)) = (
                 self.I_bias_temps.get(temp),
                 self.V_out_history_temps.get(temp),
-                self.CurrentIndex_temps.get(temp),
             ) {
-                if let Some(v) = v_vec.get(*idx as usize) {
+                if let Some(v) = v_vec.get(self.CurrentIndex) {
                     all_i_vals.extend_from_slice(i.as_slice().unwrap());
                     all_v_vals.extend_from_slice(v.as_slice().unwrap());
                 }
@@ -375,12 +389,11 @@ impl IVProcessorS {
             .map_err(|e| e.to_string())?;
 
         for temp in &self.Temps {
-            if let (Some(i), Some(v_vec), Some(idx)) = (
+            if let (Some(i), Some(v_vec)) = (
                 self.I_bias_temps.get(temp),
                 self.V_out_history_temps.get(temp),
-                self.CurrentIndex_temps.get(temp),
             ) {
-                if let Some(v) = v_vec.get(*idx as usize) {
+                if let Some(v) = v_vec.get(self.CurrentIndex) {
                     let points = i.iter().zip(v.iter()).map(|(&x, &y)| (x, y));
                     chart
                         .draw_series(LineSeries::new(points, &Palette99::pick(*temp as usize)))
@@ -488,7 +501,6 @@ impl DataProcessorT for IVProcessorS {
             self.V_out_history_temps
                 .insert(*temp, vec![Array1::from(V_out)]);
             self.I_bias_temps.insert(*temp, Array1::from(I_bias));
-            self.CurrentIndex_temps.insert(*temp, 0);
         }
 
         let CalibPath = self.DP.DataPath.join("Calibration");
@@ -497,25 +509,35 @@ impl DataProcessorT for IVProcessorS {
                 .map_err(|_| format!("Failed to crate {}.", CalibPath.display()))?;
         // 存在しない場合ディレクトリを作成
         } else {
+            let mut Calibrated=false;
             for temp in self.Temps.iter() {
-                if CalibPath.join(format!("{}mk.dat", temp)).exists() {
-                    let V_out = LoadTxt(CalibPath.join(format!("{}mk.dat", temp)).as_path())?;
+                let calib_file = CalibPath.join(format!("{}mk.dat", temp));
+                if calib_file.exists() {
+                    let V_out = LoadTxt(calib_file.as_path())?;
                     if let Some(V_out_history) = self.V_out_history_temps.get_mut(temp) {
                         if V_out.len()
                             == self
-                                .I_bias_temps
-                                .get(temp)
-                                .ok_or(format!("{}", temp).to_string())?
-                                .len()
+                            .I_bias_temps
+                            .get(temp)
+                            .ok_or(format!("{}", temp).to_string())?
+                            .len()
                         {
                             V_out_history.push(V_out);
-                            if let Some(index) = self.CurrentIndex_temps.get_mut(temp) {
-                                *index = 1;
-                            }
+                            Calibrated=true;
                         }
+                    }
+                } else {
+                    // キャリブレーションファイルがない場合、現在のVを履歴に追加
+                    if let Some(V_out_history) = self.V_out_history_temps.get_mut(temp) {
+                        let V_out_init=V_out_history[0].clone();
+                        V_out_history.push(V_out_init);
                     }
                 }
             }
+            if Calibrated {
+                self.CurrentIndex=1;
+            }
+
         }
         self.CalculateR_TES()?;
         Ok(())

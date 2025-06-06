@@ -1,10 +1,6 @@
 #![allow(nonstandard_style)]
 
-use crate::TabManager::{
-    AnalyzeFolderCommand, CalibrateMultipleJumpCommand, CalibrateSingleJumpCommand, FindFolderType,
-    FitRTCommand, GetIVCommand, GetPulseAnalysisCommand, GetPulseInfoCommand, GetRTCommand,
-    RegisterProcessor, SaveCalibratedCommand, SetDataPathCommand, UnregisterProcessor,
-};
+use crate::TabManager::{AnalyzeFolderCommand, CalibrateMultipleJumpCommand, CalibrateSingleJumpCommand, FindFolderType, FitRTCommand, GetIVCommand, GetIVIndexInfoCommand, GetPulseAnalysisCommand, GetPulseInfoCommand, GetRTCommand, IVDecrementCommand, IVIncrementCommand, RegisterProcessor, SaveCalibratedCommand, SetDataPathCommand, UnregisterProcessor};
 pub mod Config;
 pub mod DataProcessor;
 pub mod PulseProcessor;
@@ -17,10 +13,6 @@ pub mod TabManager;
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
-#[tauri::command]
-fn greet_string(name: String) -> String {
-    format!("Hello, {}! You've been greeted from String!", name)
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -30,8 +22,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // ✅ すべてのコマンドをここでまとめて指定
         .invoke_handler(tauri::generate_handler![
-            greet,
-            greet_string,
             RegisterProcessor,
             UnregisterProcessor,
             SetDataPathCommand,
@@ -40,6 +30,9 @@ pub fn run() {
             CalibrateSingleJumpCommand,
             CalibrateMultipleJumpCommand,
             GetIVCommand,
+            IVIncrementCommand,
+            IVDecrementCommand,
+            GetIVIndexInfoCommand,
             FitRTCommand,
             GetRTCommand,
             GetPulseInfoCommand,

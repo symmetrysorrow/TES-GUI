@@ -190,7 +190,6 @@ const TESAContent = ({
         if (!ivSelecting || !e?.range?.x) return;
         const [xMin, xMax] = e.range.x;
         setIVSelectedRange([xMin, xMax]);
-        alert(`範囲が選択されました。\n確定するには「範囲確定」ボタンを押してください。`);
     };
 
     const renderPlot = (plotData: Partial<PlotData>[], plotType: string) => (

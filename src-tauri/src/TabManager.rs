@@ -201,10 +201,6 @@ pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
             let mut result = serde_json::Map::new();
 
             for &temp in &p.Temps {
-                let index=p.CurrentIndex_temps
-                    .get(&temp)
-                    .ok_or(format!("Temp {} not found", temp))?;
-
                 let I_bias = p
                     .I_bias_temps
                     .get(&temp)
@@ -214,7 +210,7 @@ pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
                     .V_out_history_temps
                     .get(&temp)
                     .ok_or(format!("No V_out data for temp {}", temp))?;
-                let v_out = v_out_vec[*index as usize]
+                let v_out = v_out_vec[p.CurrentIndex]
                     .to_vec();
                 let R_tes=p
                     .R_tes_temps
@@ -236,6 +232,64 @@ pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
         _ => Err("Invalid tab or processor type".into()),
     }
 }
+
+#[tauri::command]
+pub fn IVIncrementCommand(TabName: String) -> Result<(), String> {
+    let mut map = PROCESSORS.lock().unwrap();
+    match map.get_mut(&TabName) {
+        Some(TabProcessor::IV(p)) => {
+            // 任意の温度の履歴長さを取得（ここでは最初の温度の履歴長さを使う例）
+            return if let Some((&_temp, history)) = p.V_out_history_temps.iter().next() {
+                if p.CurrentIndex + 1 < history.len() {
+                    p.CurrentIndex += 1;
+                    Ok(())
+                } else {
+                    Err("Cannot increment CurrentIndex: already at latest history".into())
+                }
+            } else {
+                Err("No V_out_history_temps found".into())
+            }
+        }
+        _ => Err("Invalid tab or processor type".into()),
+    }
+}
+#[tauri::command]
+pub fn IVDecrementCommand(TabName: String) -> Result<(), String> {
+    let mut map = PROCESSORS.lock().unwrap();
+    match map.get_mut(&TabName) {
+        Some(TabProcessor::IV(p)) => {
+            if p.CurrentIndex > 0 {
+                p.CurrentIndex -= 1;
+                Ok(())
+            } else {
+                Err("Cannot decrement CurrentIndex: already at earliest history".into())
+            }
+        }
+        _ => Err("Invalid tab or processor type".into()),
+    }
+}
+#[tauri::command]
+pub fn GetIVIndexInfoCommand(TabName: String) -> Result<serde_json::Value, String> {
+    let map = PROCESSORS.lock().unwrap();
+    match map.get(&TabName) {
+        Some(TabProcessor::IV(p)) => {
+            // どれか一つの温度の履歴長を取得（全温度は同じ長さなので）
+            return if let Some((_temp, history)) = p.V_out_history_temps.iter().next() {
+                let max = history.len();
+                let current = p.CurrentIndex;
+
+                let mut result = serde_json::Map::new();
+                result.insert("current_index".to_string(), serde_json::json!(current));
+                result.insert("max_history".to_string(), serde_json::json!(max));
+                Ok(serde_json::Value::Object(result))
+            } else {
+                Err("No calibration history found".into())
+            }
+        }
+        _ => Err("Invalid tab or processor type".into()),
+    }
+}
+
 
 #[tauri::command]
 pub fn FitRTCommand(TabName: String) -> Result<(), String> {

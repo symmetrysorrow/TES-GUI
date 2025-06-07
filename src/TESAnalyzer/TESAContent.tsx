@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import Plot from "react-plotly.js";
 import { PlotData } from "plotly.js";
 import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
-import {invoke} from "@tauri-apps/api/core";
 
 const defaultColors = [
     "#e6194b", "#3cb44b", "#ffe119", "#4363d8",
@@ -44,6 +43,10 @@ interface TESAContentProps {
     tabId: string|null;
     initialSettings?: Record<string, Setting>;
     initialTitles?: Record<string, { title: string; xaxis: string; yaxis: string }>;
+    onRangeSelected?: (params: {
+        keyValue: string | null;
+        range: [number, number];
+    }) => void;
 }
 
 const HEADER_HEIGHT = 80;
@@ -52,9 +55,9 @@ const MARGIN_BOTTOM = 10;
 const TESAContent = ({
                          data,
                          tabs,
-                         tabId,
                          initialSettings = {},
                          initialTitles,
+                         onRangeSelected,
                      }: TESAContentProps) => {
     const [containerHeight, setContainerHeight] = useState<number>(window.innerHeight);
     const [selectedTab, setSelectedTab] = useState(tabs[0].id);
@@ -62,7 +65,7 @@ const TESAContent = ({
     // IV選択関連
     const [ivSelecting, setIVSelecting] = useState(false);
     const [ivSelectedRange, setIVSelectedRange] = useState<[number, number] | null>(null);
-    const [ivSelectedCurrent, setIVSelectedCurrent] = useState<string | null>(null);
+    const [ivSelectedKeyValue, setIvSelectedKeyValue] = useState<string | null>(null);
     const [ivModalOpen, setIVModalOpen] = useState(false);
 
     // 表示設定
@@ -83,8 +86,8 @@ const TESAContent = ({
         if (Object.keys(settings).length === 0) {
             const initial: Record<string, Setting> = {};
             let i = 0;
-            for (const current in data) {
-                initial[current] = {
+            for (const keyValue in data) {
+                initial[keyValue] = {
                     visible: true,
                     color: defaultColors[i % defaultColors.length],
                     mode: "lines+markers",
@@ -108,8 +111,8 @@ const TESAContent = ({
     const createPlotData = useCallback(
         (xKey: string, yKey: string): Partial<PlotData>[] =>
             data
-                ? Object.entries(data).map(([current, entry]): Partial<PlotData> => {
-                    const setting = settings[current];
+                ? Object.entries(data).map(([keyValue, entry]): Partial<PlotData> => {
+                    const setting = settings[keyValue];
                     return {
                         x: entry[xKey] ?? [],
                         y: entry[yKey] ?? [],
@@ -125,7 +128,7 @@ const TESAContent = ({
                                     color: setting?.color,
                                     symbol: setting?.markerSymbol,
                                 },
-                        name: `${current} µA`,
+                        name: `${keyValue} µA`,
                         visible: setting?.visible ? true : "legendonly",
                     };
                 })
@@ -137,18 +140,18 @@ const TESAContent = ({
     const openIVSelectModal = () => setIVModalOpen(true);
 
     // IV選択モーダルの選択確定
-    const handleIVModalConfirm = (selectedCurrent: string) => {
-        if (!data || !Object.keys(data).includes(selectedCurrent)) {
+    const handleIVModalConfirm = (selectedKeyValue: string) => {
+        if (!data || !Object.keys(data).includes(selectedKeyValue)) {
             setIVModalOpen(false);
             return;
         }
-        // 選択されたcurrentだけvisibleにして他は非表示
+        // 選択されたkeyだけvisibleにして他は非表示
         const newSettings: Record<string, Setting> = {};
-        Object.entries(settings).forEach(([current, setting]) => {
-            newSettings[current] = { ...setting, visible: current === selectedCurrent };
+        Object.entries(settings).forEach(([keyValue, setting]) => {
+            newSettings[keyValue] = { ...setting, visible: keyValue === selectedKeyValue };
         });
         setSettings(newSettings);
-        setIVSelectedCurrent(selectedCurrent);
+        setIvSelectedKeyValue(selectedKeyValue);
         setIVSelectedRange(null);
         setIVSelecting(true);
         setIVModalOpen(false);
@@ -161,8 +164,13 @@ const TESAContent = ({
     const handleConfirmRange = () => {
         if (!ivSelectedRange) return;
         const [xMin, xMax] = ivSelectedRange;
-        invoke("CalibrateSingleJumpCommand", {tabName:tabId,temp:Number(ivSelectedCurrent), calibStartIbias:xMin, calibEndIbias:xMax})
-        invoke
+        // ✅ コールバック呼び出し
+        if (onRangeSelected) {
+            onRangeSelected({
+                keyValue: ivSelectedKeyValue,
+                range: [xMin, xMax],
+            });
+        }
         // 全visibleを戻す
         setSettings((prev) =>
             Object.fromEntries(
@@ -171,7 +179,7 @@ const TESAContent = ({
         );
         setIVSelecting(false);
         setIVSelectedRange(null);
-        setIVSelectedCurrent(null);
+        setIvSelectedKeyValue(null);
     };
 
     // キャンセルボタン押下（ドラッグ中も可能）
@@ -184,7 +192,7 @@ const TESAContent = ({
         );
         setIVSelecting(false);
         setIVSelectedRange(null);
-        setIVSelectedCurrent(null);
+        setIvSelectedKeyValue(null);
     };
 
     // Plotlyの範囲選択イベント
@@ -192,6 +200,8 @@ const TESAContent = ({
         if (!ivSelecting || !e?.range?.x) return;
         const [xMin, xMax] = e.range.x;
         setIVSelectedRange([xMin, xMax]);
+
+
     };
 
     const renderPlot = (plotData: Partial<PlotData>[], plotType: string) => {
@@ -248,8 +258,8 @@ const TESAContent = ({
             {/* 左サイドバー: 設定 */}
             <div className="flex flex-col w-64 p-2 bg-zinc-900 text-white overflow-auto">
                 <h2 className="text-lg font-semibold mb-2">表示設定</h2>
-                {Object.entries(settings).map(([current, setting]) => (
-                    <div key={current} className="mb-2">
+                {Object.entries(settings).map(([keyValue, setting]) => (
+                    <div key={keyValue} className="mb-2">
                         <label className="flex items-center gap-2">
                             <input
                                 type="checkbox"
@@ -257,11 +267,11 @@ const TESAContent = ({
                                 onChange={(e) =>
                                     setSettings((prev) => ({
                                         ...prev,
-                                        [current]: { ...prev[current], visible: e.target.checked },
+                                        [keyValue]: { ...prev[keyValue], visible: e.target.checked },
                                     }))
                                 }
                             />
-                            {current} µA
+                            {keyValue} µA
                         </label>
                         <input
                             type="color"
@@ -269,7 +279,7 @@ const TESAContent = ({
                             onChange={(e) =>
                                 setSettings((prev) => ({
                                     ...prev,
-                                    [current]: { ...prev[current], color: e.target.value },
+                                    [keyValue]: { ...prev[keyValue], color: e.target.value },
                                 }))
                             }
                             className="w-full mt-1"
@@ -279,7 +289,7 @@ const TESAContent = ({
                             onChange={(e) =>
                                 setSettings((prev) => ({
                                     ...prev,
-                                    [current]: { ...prev[current], markerSymbol: e.target.value },
+                                    [keyValue]: { ...prev[keyValue], markerSymbol: e.target.value },
                                 }))
                             }
                             className="w-full mt-1 bg-zinc-800 text-white"
@@ -366,7 +376,7 @@ const TESAContent = ({
                 {ivModalOpen && (
                     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
                         <div className="bg-white rounded p-4 max-w-sm w-full">
-                            <h3 className="font-bold mb-2">currentを選択してください</h3>
+                            <h3 className="font-bold mb-2">温度を選択してください</h3>
                             <form
                                 onSubmit={(e) => {
                                     e.preventDefault();
@@ -387,7 +397,7 @@ const TESAContent = ({
                                             className="mr-2"
                                             required
                                         />
-                                        {current} µA
+                                        {current} mK
                                     </label>
                                 ))}
                                 <div className="flex justify-end mt-4 gap-2">

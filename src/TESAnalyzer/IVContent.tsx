@@ -9,7 +9,6 @@ const rtTabs = [
 
 const IVContent = ({ tabId }: { tabId: string }) => {
     const [data, setData] = useState<TESAData | null>(null);
-
     useEffect(() => {
         invoke<TESAData>("GetIVCommand", { tabName: tabId })
             .then((res) => {
@@ -17,8 +16,22 @@ const IVContent = ({ tabId }: { tabId: string }) => {
             })
             .catch((e) => console.error(e));
     }, [tabId]);
-
-    return <TESAContent data={data} tabs={rtTabs} tabId={tabId}/>;
+    return <TESAContent data={data} tabs={rtTabs} tabId={tabId}
+                        onRangeSelected={({ keyValue, range }) => {
+                            console.log("外部で選択範囲を検知しました:", { current: keyValue, range });
+                            invoke("CalibrateSingleJumpCommand", {tabName:tabId,temp:Number(keyValue), calibStartIbias:range[0], calibEndIbias:range[1]})
+                                .then(() => {
+                                    invoke<TESAData>("GetIVCommand", { tabName: tabId })
+                                        .then((res) => {
+                                            setData(res);
+                                        })
+                                        .catch((e) => console.error(e));
+                                })
+                                .catch((e) => {
+                                    console.error("キャリブレーション中にエラーが発生しました:", e);
+                                    alert("キャリブレーション中にエラーが発生しました。\n" + e);
+                                });
+                        }}/>;
 };
 
 export default IVContent;

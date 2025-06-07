@@ -41,6 +41,7 @@ interface TESAContentProps {
     data: TESAData | null;
     tabs: TabConfig[];
     tabId: string|null;
+    unitLabel:string|null;
     initialSettings?: Record<string, Setting>;
     initialTitles?: Record<string, { title: string; xaxis: string; yaxis: string }>;
     onRangeSelected?: (params: {
@@ -55,6 +56,7 @@ const MARGIN_BOTTOM = 10;
 const TESAContent = ({
                          data,
                          tabs,
+                         unitLabel,
                          initialSettings = {},
                          initialTitles,
                          onRangeSelected,
@@ -128,7 +130,7 @@ const TESAContent = ({
                                     color: setting?.color,
                                     symbol: setting?.markerSymbol,
                                 },
-                        name: `${keyValue} µA`,
+                        name: `${keyValue} ${unitLabel}`,
                         visible: setting?.visible ? true : "legendonly",
                     };
                 })
@@ -255,7 +257,74 @@ const TESAContent = ({
 
     return (
         <div style={{ height: containerHeight }} className="w-full flex">
-            {/* 左サイドバー: 設定 */}
+
+            {/* グラフ（左側） */}
+            <div className="flex-grow flex flex-col relative">
+
+                {/* IV 範囲選択ボタン（グラフ右下に配置） */}
+                {selectedTab === "IV" && (
+                    <div className="absolute bottom-2 right-2 z-10 space-x-2">
+                        {!ivSelecting && (
+                            <button
+                                onClick={openIVSelectModal}
+                                className="bg-blue-600 text-white px-3 py-1 rounded"
+                            >
+                                IV範囲選択開始
+                            </button>
+                        )}
+                        {ivSelecting && (
+                            <>
+                                {ivSelectedRange && (
+                                    <button
+                                        onClick={handleConfirmRange}
+                                        className="bg-green-600 text-white px-3 py-1 rounded"
+                                    >
+                                        範囲確定
+                                    </button>
+                                )}
+                                <button
+                                    onClick={handleCancelRange}
+                                    className="bg-red-600 text-white px-3 py-1 rounded"
+                                >
+                                    キャンセル
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* グラフ本体 */}
+                <TabGroup
+                    selectedIndex={tabs.findIndex((t) => t.id === selectedTab)}
+                    onChange={(i) => setSelectedTab(tabs[i].id)}
+                >
+                    <TabList className="flex border-b border-gray-400">
+                        {tabs.map((tab) => (
+                            <Tab
+                                key={tab.id}
+                                className={({ selected }) =>
+                                    `px-4 py-2 cursor-pointer ${
+                                        selected
+                                            ? "border-b-2 border-blue-500 font-bold"
+                                            : "text-gray-400"
+                                    }`
+                                }
+                            >
+                                {tab.label}
+                            </Tab>
+                        ))}
+                    </TabList>
+                    <TabPanels className="flex-grow">
+                        {tabs.map((tab) => (
+                            <TabPanel key={tab.id} className="h-full">
+                                {renderPlot(createPlotData(tab.xKey, tab.yKey), tab.id)}
+                            </TabPanel>
+                        ))}
+                    </TabPanels>
+                </TabGroup>
+            </div>
+
+            {/* 右サイドバー */}
             <div className="flex flex-col w-64 p-2 bg-zinc-900 text-white overflow-auto">
                 <h2 className="text-lg font-semibold mb-2">表示設定</h2>
                 {Object.entries(settings).map(([keyValue, setting]) => (
@@ -267,11 +336,14 @@ const TESAContent = ({
                                 onChange={(e) =>
                                     setSettings((prev) => ({
                                         ...prev,
-                                        [keyValue]: { ...prev[keyValue], visible: e.target.checked },
+                                        [keyValue]: {
+                                            ...prev[keyValue],
+                                            visible: e.target.checked,
+                                        },
                                     }))
                                 }
                             />
-                            {keyValue} µA
+                            {keyValue} {unitLabel}
                         </label>
                         <input
                             type="color"
@@ -279,7 +351,10 @@ const TESAContent = ({
                             onChange={(e) =>
                                 setSettings((prev) => ({
                                     ...prev,
-                                    [keyValue]: { ...prev[keyValue], color: e.target.value },
+                                    [keyValue]: {
+                                        ...prev[keyValue],
+                                        color: e.target.value,
+                                    },
                                 }))
                             }
                             className="w-full mt-1"
@@ -289,7 +364,10 @@ const TESAContent = ({
                             onChange={(e) =>
                                 setSettings((prev) => ({
                                     ...prev,
-                                    [keyValue]: { ...prev[keyValue], markerSymbol: e.target.value },
+                                    [keyValue]: {
+                                        ...prev[keyValue],
+                                        markerSymbol: e.target.value,
+                                    },
                                 }))
                             }
                             className="w-full mt-1 bg-zinc-800 text-white"
@@ -313,7 +391,10 @@ const TESAContent = ({
                         onChange={(e) =>
                             setTitles((prev) => ({
                                 ...prev,
-                                [selectedTab]: { ...prev[selectedTab], title: e.target.value },
+                                [selectedTab]: {
+                                    ...prev[selectedTab],
+                                    title: e.target.value,
+                                },
                             }))
                         }
                         placeholder="グラフタイトル"
@@ -325,7 +406,10 @@ const TESAContent = ({
                         onChange={(e) =>
                             setTitles((prev) => ({
                                 ...prev,
-                                [selectedTab]: { ...prev[selectedTab], xaxis: e.target.value },
+                                [selectedTab]: {
+                                    ...prev[selectedTab],
+                                    xaxis: e.target.value,
+                                },
                             }))
                         }
                         placeholder="X軸タイトル"
@@ -337,40 +421,15 @@ const TESAContent = ({
                         onChange={(e) =>
                             setTitles((prev) => ({
                                 ...prev,
-                                [selectedTab]: { ...prev[selectedTab], yaxis: e.target.value },
+                                [selectedTab]: {
+                                    ...prev[selectedTab],
+                                    yaxis: e.target.value,
+                                },
                             }))
                         }
                         placeholder="Y軸タイトル"
                     />
                 </div>
-
-                {/* IV範囲選択 */}
-                {selectedTab === "IV" && !ivSelecting && (
-                    <button
-                        onClick={openIVSelectModal}
-                        className="bg-blue-600 text-white px-3 py-1 rounded mt-4"
-                    >
-                        IV範囲選択開始
-                    </button>
-                )}
-                {selectedTab === "IV" && ivSelecting && (
-                    <div className="mt-4 space-x-2">
-                        {ivSelectedRange && (
-                            <button
-                                onClick={handleConfirmRange}
-                                className="bg-green-600 text-white px-3 py-1 rounded"
-                            >
-                                範囲確定
-                            </button>
-                        )}
-                        <button
-                            onClick={handleCancelRange}
-                            className="bg-red-600 text-white px-3 py-1 rounded"
-                        >
-                            キャンセル
-                        </button>
-                    </div>
-                )}
 
                 {/* IV選択モーダル */}
                 {ivModalOpen && (
@@ -420,35 +479,10 @@ const TESAContent = ({
                     </div>
                 )}
             </div>
-
-            {/* 右コンテンツ: グラフ */}
-            <div className="flex-grow flex flex-col">
-                <TabGroup selectedIndex={tabs.findIndex((t) => t.id === selectedTab)} onChange={(i) => setSelectedTab(tabs[i].id)}>
-                    <TabList className="flex border-b border-gray-400">
-                        {tabs.map((tab) => (
-                            <Tab
-                                key={tab.id}
-                                className={({ selected }) =>
-                                    `px-4 py-2 cursor-pointer ${
-                                        selected ? "border-b-2 border-blue-500 font-bold" : "text-gray-400"
-                                    }`
-                                }
-                            >
-                                {tab.label}
-                            </Tab>
-                        ))}
-                    </TabList>
-                    <TabPanels className="flex-grow">
-                        {tabs.map((tab) => (
-                            <TabPanel key={tab.id} className="h-full">
-                                {renderPlot(createPlotData(tab.xKey, tab.yKey), tab.id)}
-                            </TabPanel>
-                        ))}
-                    </TabPanels>
-                </TabGroup>
-            </div>
         </div>
     );
+
+
 };
 
 export default TESAContent;

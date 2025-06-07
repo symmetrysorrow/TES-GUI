@@ -16,7 +16,7 @@ const IVContent = ({ tabId }: { tabId: string }) => {
             })
             .catch((e) => console.error(e));
     }, [tabId]);
-    return <TESAContent data={data} tabs={rtTabs} tabId={tabId}
+    return <TESAContent data={data} tabs={rtTabs} tabId={tabId} unitLabel="mK"
                         onRangeSelected={({ keyValue, range }) => {
                             console.log("外部で選択範囲を検知しました:", { current: keyValue, range });
                             invoke("CalibrateSingleJumpCommand", {tabName:tabId,temp:Number(keyValue), calibStartIbias:range[0], calibEndIbias:range[1]})

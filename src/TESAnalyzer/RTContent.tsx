@@ -18,7 +18,7 @@ const RTContent = ({ tabId }: { tabId: string }) => {
             .catch((e) => console.error(e));
     }, [tabId]);
 
-    return <TESAContent data={data} tabs={rtTabs} tabId={tabId}/>;
+    return <TESAContent data={data} tabs={rtTabs} tabId={tabId} unitLabel="μA"/>;
 };
 
 export default RTContent;

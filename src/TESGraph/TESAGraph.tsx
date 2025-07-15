@@ -8,7 +8,7 @@ import React, {
 import TESGraph, { TESGraphProps, TESGraphRef } from "./TESGraph";
 import { PlotData } from "plotly.js";
 import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
-import { ChevronLeft, ChevronRight , Menu} from "lucide-react";
+import { Menu} from "lucide-react";
 
 
 export interface TESAData {
@@ -160,7 +160,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             [data, settings, visibleKeys]
         );
 
-        const title = titles[selectedTab];
+        //const title = titles[selectedTab];
 
         // 設定変更ハンドラ
         const handleSettingChange = (
@@ -210,128 +210,134 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
 
                         <TabPanels className="flex-grow">
                             {tabs.map((tab) => (
-                                <TabPanel key={tab.label} className="h-full" unmount={false}>
-                                    <TESGraph
-                                        ref={innerGraphRefs.current[tab.label]}
-                                        data={createPlotData(tab)}
-                                        layout={{
-                                            title: { text: titles[tab.label].main },
-                                            xaxis: { title: { text: titles[tab.label].xaxis } },
-                                            yaxis: { title: { text: titles[tab.label].yaxis } },
-                                        }}
-                                        {...restProps}
-                                    />
+                                <TabPanel key={tab.label} className="flex h-full" unmount={false}>
+                                    {/* グラフ領域：横伸び */}
+                                    <div className="flex-grow h-full min-w-0">
+                                        <TESGraph
+                                            ref={innerGraphRefs.current[tab.label]}
+                                            data={createPlotData(tab)}
+                                            layout={{
+                                                title: { text: titles[tab.label].main },
+                                                xaxis: { title: { text: titles[tab.label].xaxis } },
+                                                yaxis: { title: { text: titles[tab.label].yaxis } },
+                                            }}
+                                            {...restProps}
+                                        />
+                                    </div>
+
+                                    {/* 右側の固定幅サイドバー */}
+                                    {sidebarOpen && (
+                                        <div className="w-64 h-full flex-col border-l border-gray-300">
+                                            <div className="flex-1 overflow-y-auto p-4">
+                                                {/* 表示設定パネルの中身 */}
+                                                <h2 className="text-lg font-bold mb-4">表示設定</h2>
+                                                {/* タイトル・軸設定 */}
+                                                <div className="mb-6">
+                                                    <label className="block text-sm font-medium">タイトル</label>
+                                                    <input
+                                                        className="w-full border px-2 py-1"
+                                                        value={titles[tab.label].main}
+                                                        onChange={(e) =>
+                                                            setTitles((prev) => ({
+                                                                ...prev,
+                                                                [tab.label]: {
+                                                                    ...prev[tab.label],
+                                                                    main: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                    <label className="block text-sm font-medium mt-2">X軸</label>
+                                                    <input
+                                                        className="w-full border px-2 py-1"
+                                                        value={titles[tab.label].xaxis}
+                                                        onChange={(e) =>
+                                                            setTitles((prev) => ({
+                                                                ...prev,
+                                                                [tab.label]: {
+                                                                    ...prev[tab.label],
+                                                                    xaxis: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                    <label className="block text-sm font-medium mt-2">Y軸</label>
+                                                    <input
+                                                        className="w-full border px-2 py-1"
+                                                        value={titles[tab.label].yaxis}
+                                                        onChange={(e) =>
+                                                            setTitles((prev) => ({
+                                                                ...prev,
+                                                                [tab.label]: {
+                                                                    ...prev[tab.label],
+                                                                    yaxis: e.target.value,
+                                                                },
+                                                            }))
+                                                        }
+                                                    />
+                                                </div>
+                                                {/* 各カーブの設定 */}
+                                                {Object.keys(data).map((key) => {
+                                                    const setting = settings[key];
+                                                    return (
+                                                        <div key={key} className="mb-4">
+                                                            <h3 className="font-semibold text-sm">{key}</h3>
+                                                            <label className="text-xs">表示</label>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={setting.visible}
+                                                                onChange={(e) =>
+                                                                    handleSettingChange(key, "visible", e.target.checked)
+                                                                }
+                                                                className="ml-2"
+                                                            />
+                                                            <label className="block text-xs mt-1">色</label>
+                                                            <input
+                                                                type="color"
+                                                                value={setting.color}
+                                                                onChange={(e) =>
+                                                                    handleSettingChange(key, "color", e.target.value)
+                                                                }
+                                                                className="w-full"
+                                                            />
+                                                            <label className="block text-xs mt-1">スタイル</label>
+                                                            <select
+                                                                value={setting.mode}
+                                                                onChange={(e) =>
+                                                                    handleSettingChange(key, "mode", e.target.value)
+                                                                }
+                                                                className="w-full text-xs"
+                                                            >
+                                                                <option value="lines">lines</option>
+                                                                <option value="markers">markers</option>
+                                                                <option value="lines+markers">lines+markers</option>
+                                                            </select>
+                                                            <label className="block text-xs mt-1">マーカー</label>
+                                                            <select
+                                                                value={setting.markerSymbol}
+                                                                onChange={(e) =>
+                                                                    handleSettingChange(key, "markerSymbol", e.target.value)
+                                                                }
+                                                                className="w-full text-xs"
+                                                            >
+                                                                {markerSymbols.map((symbol) => (
+                                                                    <option key={symbol} value={symbol}>
+                                                                        {symbol}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </TabPanel>
+
                             ))}
                         </TabPanels>
                     </TabGroup>
                 </div>
-                {/* サイドバー */}
-                {sidebarOpen && (
-                    <div className="w-64 p-4 bg-white border-l border-gray-300 overflow-y-auto order-last h-full">
-                        <h2 className="text-lg font-bold mb-4">表示設定</h2>
-
-                        {/* タイトル・軸設定 */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium">タイトル</label>
-                            <input
-                                className="w-full border px-2 py-1"
-                                value={title.main}
-                                onChange={(e) =>
-                                    setTitles((prev) => ({
-                                        ...prev,
-                                        [selectedTab]: {
-                                            ...prev[selectedTab],
-                                            main: e.target.value,
-                                        },
-                                    }))
-                                }
-                            />
-                            <label className="block text-sm font-medium mt-2">X軸</label>
-                            <input
-                                className="w-full border px-2 py-1"
-                                value={title.xaxis}
-                                onChange={(e) =>
-                                    setTitles((prev) => ({
-                                        ...prev,
-                                        [selectedTab]: {
-                                            ...prev[selectedTab],
-                                            xaxis: e.target.value,
-                                        },
-                                    }))
-                                }
-                            />
-                            <label className="block text-sm font-medium mt-2">Y軸</label>
-                            <input
-                                className="w-full border px-2 py-1"
-                                value={title.yaxis}
-                                onChange={(e) =>
-                                    setTitles((prev) => ({
-                                        ...prev,
-                                        [selectedTab]: {
-                                            ...prev[selectedTab],
-                                            yaxis: e.target.value,
-                                        },
-                                    }))
-                                }
-                            />
-                        </div>
-
-                        {/* 各カーブの設定 */}
-                        {Object.keys(data).map((key) => {
-                            const setting = settings[key];
-                            return (
-                                <div key={key} className="mb-4">
-                                    <h3 className="font-semibold text-sm">{key}</h3>
-                                    <label className="text-xs">表示</label>
-                                    <input
-                                        type="checkbox"
-                                        checked={setting.visible}
-                                        onChange={(e) =>
-                                            handleSettingChange(key, "visible", e.target.checked)
-                                        }
-                                        className="ml-2"
-                                    />
-                                    <label className="block text-xs mt-1">色</label>
-                                    <input
-                                        type="color"
-                                        value={setting.color}
-                                        onChange={(e) =>
-                                            handleSettingChange(key, "color", e.target.value)
-                                        }
-                                        className="w-full"
-                                    />
-                                    <label className="block text-xs mt-1">スタイル</label>
-                                    <select
-                                        value={setting.mode}
-                                        onChange={(e) =>
-                                            handleSettingChange(key, "mode", e.target.value)
-                                        }
-                                        className="w-full text-xs"
-                                    >
-                                        <option value="lines">lines</option>
-                                        <option value="markers">markers</option>
-                                        <option value="lines+markers">lines+markers</option>
-                                    </select>
-                                    <label className="block text-xs mt-1">マーカー</label>
-                                    <select
-                                        value={setting.markerSymbol}
-                                        onChange={(e) =>
-                                            handleSettingChange(key, "markerSymbol", e.target.value)
-                                        }
-                                        className="w-full text-xs"
-                                    >
-                                        {markerSymbols.map((symbol) => (
-                                            <option key={symbol} value={symbol}>
-                                                {symbol}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
             </div>
         );
     }

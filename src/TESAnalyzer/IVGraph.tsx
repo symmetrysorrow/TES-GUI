@@ -194,7 +194,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                     </div>
 
                     {/* TESAGraph の真下・右寄せにボタン */}
-                    <div className="flex justify-end gap-2 mt-2 mb-2 mr-2">
+                    <div className="flex  gap-2 mt-2 mb-2 ml-2">
                         {!ivSelecting && (
                             <Button
                                 className="inline-flex w-auto items-center gap-2 rounded-md bg-zinc-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-gray-600"

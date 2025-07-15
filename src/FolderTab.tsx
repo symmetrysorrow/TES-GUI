@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef, ReactNode } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import { Plus } from "lucide-react";
-import { TopToolbar } from "./TopToolBar";
 import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import IVContent from "@/TESAnalyzer/IVContent.tsx";
+import IVGraph from "@/TESAnalyzer/IVGraph.tsx";
 import PulseContent from "@/PulseContent";
 import RTContent from "@/TESAnalyzer/RTContent.tsx";
-import { TargetEnum, useTargetState } from "@/TargetContext.tsx";
+import {TargetEnum} from "@/TargetContext.tsx";
 
 type TabItem = {
     id: string;
@@ -23,7 +22,7 @@ const getFolderName = (path: string) =>
     path.split("\\").filter(Boolean).pop() || "新しいタブ";
 
 const DynamicTabs = () => {
-    const { setCurrentTarget } = useTargetState();
+
     const InitialID = crypto.randomUUID();
 
     const [tabs, setTabs] = useState<TabItem[]>([
@@ -128,7 +127,7 @@ const DynamicTabs = () => {
             switch (folderType) {
                 case "IV":
                     targetType = TargetEnum.IV;
-                    content = () => <IVContent tabId={tabId} />;
+                    content = () => <IVGraph tabId={tabId} />;
                     break;
                 case "RT":
                     targetType = TargetEnum.RT;
@@ -136,7 +135,7 @@ const DynamicTabs = () => {
                     break;
                 case "Pulse":
                     targetType = TargetEnum.Pulse;
-                    content = () => <PulseContent folderPath={folderPath} tabId={tabId} />;
+                    //content = () => <PulseContent tabId={tabId} />;
                     break;
             }
 
@@ -156,7 +155,6 @@ const DynamicTabs = () => {
                         : tab,
                 ),
             );
-            setCurrentTarget(targetType);
         } catch (e) {
             console.error("フォルダ判定エラー:", e);
             alert("フォルダの種類を判定できませんでした。\n" + e);
@@ -184,10 +182,7 @@ const DynamicTabs = () => {
                 const newTabId = tabs[index]?.id;
                 if (newTabId) {
                     setCurrentTabId(newTabId);
-                    const targetTab = tabs.find((t) => t.id === newTabId);
-                    if (targetTab) {
-                        setCurrentTarget(targetTab.TargetType ?? null);
-                    }
+                    //const targetTab = tabs.find((t) => t.id === newTabId);
                 }
             }}
             className="flex flex-1 flex-col  w-full mx-auto text-white" id="dynamic-tabs-container"
@@ -220,10 +215,6 @@ const DynamicTabs = () => {
                     <Plus size={20} />
                 </div>
             </TabList>
-
-
-            <TopToolbar />
-
 
             <TabPanels className="text-black flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
                 {tabs.map((tab) => (

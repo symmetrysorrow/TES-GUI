@@ -196,6 +196,7 @@ pub fn CalibrateMultipleJumpCommand(
 #[tauri::command]
 pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
     let map = PROCESSORS.lock().unwrap();
+    println!("GetIVCommand");
     match map.get(&TabName) {
         Some(TabProcessor::IV(p)) => {
             let mut result = serde_json::Map::new();

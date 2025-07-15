@@ -185,15 +185,15 @@ const DynamicTabs = () => {
                     //const targetTab = tabs.find((t) => t.id === newTabId);
                 }
             }}
-            className="flex flex-1 flex-col  w-full mx-auto text-white" id="dynamic-tabs-container"
+            className="flex flex-1 flex-col  w-full mx-auto text-black" id="dynamic-tabs-container"
         >
-            <TabList className="flex flex-shrink-0 items-center p-0.5 bg-zinc-900">
+            <TabList className="flex flex-shrink-0 items-center p-0.5 bg-zinc-300">
                 {tabs.map((tab) => (
                     <Tab
                         key={tab.id}
                         className={({ selected }) =>
-                            `flex justify-between items-center gap-2 px-1 py-1 rounded-md cursor-pointer hover:bg-zinc-800
-                        ${selected ? "bg-zinc-700" : "bg-transparent"}`
+                            `flex justify-between items-center gap-2 px-1 py-1 rounded-md cursor-pointer hover:bg-zinc-200
+                        ${selected ? "bg-zinc-100" : "bg-transparent"}`
                         }
                     >
                         <span className="truncate text-sm ml-1 mr-1">{tab.title}</span>
@@ -202,21 +202,21 @@ const DynamicTabs = () => {
                                 e.stopPropagation();
                                 removeTab(tab.id);
                             }}
-                            className="text-white hover:text-red-400 mr-1"
+                            className="text-black hover:text-red-400 mr-1 "
                         >
                             ×
                         </div>
                     </Tab>
                 ))}
                 <div
-                    className="text-white hover:bg-zinc-800 ml-1 p-1 rounded-md items-center justify-center"
+                    className="text-black hover:bg-zinc-200 ml-1 p-1 rounded-md items-center justify-center"
                     onClick={addTab}
                 >
                     <Plus size={20} />
                 </div>
             </TabList>
 
-            <TabPanels className="text-black flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
+            <TabPanels className="text-black bg-zinc-100 flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
                 {tabs.map((tab) => (
                     <TabPanel unmount={false} key={tab.id} className="w-full flex-grow flex flex-col" id="tab-panel">
                         {tab.content()}

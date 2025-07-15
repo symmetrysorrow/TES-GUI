@@ -8,7 +8,8 @@ import React, {
 import TESGraph, { TESGraphProps, TESGraphRef } from "./TESGraph";
 import { PlotData } from "plotly.js";
 import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight , Menu} from "lucide-react";
+
 
 export interface TESAData {
     [curveKey: string]: {
@@ -184,7 +185,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                         selectedIndex={tabs.findIndex((t) => t.label === selectedTab)}
                         onChange={(i) => setSelectedTab(tabs[i].label)}
                     >
-                        <TabList className="flex border-b border-gray-400">
+                        <TabList className="relative flex justify-center border-b border-gray-400 px-2">
                             {tabs.map((tab) => (
                                 <Tab
                                     key={tab.label}
@@ -199,7 +200,14 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                     {tab.label}
                                 </Tab>
                             ))}
+                            <button
+                                onClick={onToggleSidebar}
+                                className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800"
+                            >
+                                <Menu size={20} />
+                            </button>
                         </TabList>
+
                         <TabPanels className="flex-grow">
                             {tabs.map((tab) => (
                                 <TabPanel key={tab.label} className="h-full" unmount={false}>
@@ -324,16 +332,6 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                         })}
                     </div>
                 )}
-
-                {/* サイドバー開閉ボタン */}
-                <button
-                    onClick={onToggleSidebar}
-                    className="absolute top-2 left-2 z-10 bg-white rounded-full shadow p-1 border"
-                >
-                    {sidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-                </button>
-
-
             </div>
         );
     }

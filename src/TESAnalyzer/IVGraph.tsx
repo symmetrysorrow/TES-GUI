@@ -111,90 +111,115 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
     };
 
     return (
-        <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-
-            <Dialog
-                open={ivModalOpen}
-                as="div"
-                onClose={() => setIVModalOpen(false)}
-                className="relative z-10 focus:outline-none"
-            >
-                <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm" aria-hidden="true" />
-                <div className="fixed inset-0 z-10 flex items-center justify-center p-4">
-                    <DialogPanel
-                        className="w-full max-w-md rounded-xl bg-white/5 p-6 backdrop-blur-2xl duration-300 ease-out data-closed:scale-95 data-closed:opacity-0"
+        <div className="h-full flex flex-col relative">
+            {IVData === null ? (
+                // Loading 表示
+                <div className="flex flex-1 flex-col items-center justify-center text-white text-xl">
+                    <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                    Loading...
+                </div>
+            ) : (
+                <>
+                    {/* モーダル */}
+                    <Dialog
+                        open={ivModalOpen}
+                        as="div"
+                        onClose={() => setIVModalOpen(false)}
+                        className="relative z-10 focus:outline-none"
                     >
-                        <DialogTitle className="text-base/7 font-medium text-white mb-2">
-                            温度を選択してください
-                        </DialogTitle>
-                        <Description className="text-sm/6 text-white/60 mb-4">
-                            使用するカーブ（温度）を1つ選んでください。
-                        </Description>
+                        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm" aria-hidden="true" />
+                        <div className="fixed inset-0 z-10 flex items-center justify-center p-4">
+                            <DialogPanel className="w-full max-w-md rounded-xl bg-white/5 p-6 backdrop-blur-2xl duration-300 ease-out data-closed:scale-95 data-closed:opacity-0">
+                                <DialogTitle className="text-base/7 font-medium text-white mb-2">
+                                    温度を選択してください
+                                </DialogTitle>
+                                <Description className="text-sm/6 text-white/60 mb-4">
+                                    使用するカーブ（温度）を1つ選んでください。
+                                </Description>
 
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const formData = new FormData(e.currentTarget);
-                                const selected = formData.get("current");
-                                if (typeof selected === "string") handleIVModalConfirm(selected);
-                            }}
-                        >
-                            {Object.keys(IVData??{}).map((current) => (
-                                <label
-                                    key={current}
-                                    className="block mb-1 cursor-pointer hover:bg-white/10 rounded px-2 py-1 text-white"
+                                <form
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const formData = new FormData(e.currentTarget);
+                                        const selected = formData.get("current");
+                                        if (typeof selected === "string") handleIVModalConfirm(selected);
+                                    }}
                                 >
-                                    <input
-                                        type="radio"
-                                        name="current"
-                                        value={current}
-                                        className="mr-2"
-                                        required
-                                    />
-                                    {current} mK
-                                </label>
-                            ))}
-                            <div className="flex justify-end mt-4 gap-2">
+                                    {Object.keys(IVData).map((current) => (
+                                        <label
+                                            key={current}
+                                            className="block mb-1 cursor-pointer hover:bg-white/10 rounded px-2 py-1 text-white"
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="current"
+                                                value={current}
+                                                className="mr-2"
+                                                required
+                                            />
+                                            {current} mK
+                                        </label>
+                                    ))}
+                                    <div className="flex justify-end mt-4 gap-2">
+                                        <Button
+                                            type="button"
+                                            onClick={handleIVModalCancel}
+                                            className="bg-gray-400 text-white px-3 py-1.5 rounded-md hover:bg-gray-500"
+                                        >
+                                            キャンセル
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700"
+                                        >
+                                            確定
+                                        </Button>
+                                    </div>
+                                </form>
+                            </DialogPanel>
+                        </div>
+                    </Dialog>
+
+                    {/* TESAGraph */}
+                    <div className="flex-grow">
+                        <TESAGraph
+                            ref={graphRef}
+                            {...graphProps}
+                            visibleKeys={
+                                ivSelecting && ivSelectedKeyValue
+                                    ? [ivSelectedKeyValue]
+                                    : Object.keys(IVData)
+                            }
+                        />
+                    </div>
+
+                    {/* TESAGraph の真下・右寄せにボタン */}
+                    <div className="flex justify-end gap-2 mt-2 mb-2 mr-2">
+                        {!ivSelecting && (
+                            <Button
+                                className="inline-flex w-auto items-center gap-2 rounded-md bg-zinc-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-gray-600"
+                                onClick={() => setIVModalOpen(true)}
+                            >
+                                IV範囲を選択開始
+                            </Button>
+                        )}
+
+                        {ivSelecting && (
+                            <div className="flex gap-1">
                                 <Button
-                                    type="button"
-                                    onClick={handleIVModalCancel}
-                                    className="bg-gray-400 text-white px-3 py-1.5 rounded-md hover:bg-gray-500"
-                                >
-                                    キャンセル
-                                </Button>
+                                    className="inline-flex w-auto items-center gap-2 rounded-md bg-zinc-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-gray-600"
+                                    onClick={confirmIVSelect}>範囲確定</Button>
                                 <Button
-                                    type="submit"
-                                    className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700"
-                                >
-                                    確定
-                                </Button>
+                                    className="inline-flex w-auto items-center gap-2 rounded-md bg-red-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-red-600"
+                                    onClick={cancelIVSelect}>キャンセル</Button>
                             </div>
-                        </form>
-                    </DialogPanel>
-                </div>
-            </Dialog>
-
-
-            {/* IV選択開始ボタン */}
-            {!ivSelecting && (
-                <Button className="bg-amber-600" onClick={() => setIVModalOpen(true)}>IV範囲を選択開始</Button>
+                        )}
+                    </div>
+                </>
             )}
-
-            {/* 選択モード中のボタン */}
-            {ivSelecting && (
-                <div>
-                    <Button onClick={confirmIVSelect}>範囲確定</Button>
-                    <Button onClick={cancelIVSelect}>キャンセル</Button>
-                </div>
-            )}
-            <TESAGraph
-                ref={graphRef}
-                {...graphProps}
-                visibleKeys={ivSelecting && ivSelectedKeyValue ? [ivSelectedKeyValue] : Object.keys(IVData ?? {})}
-            />
-
         </div>
     );
+
 };
 
 

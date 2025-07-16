@@ -31,16 +31,6 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
             .catch((e) => console.error(e));
     }, [tabId]);
 
-    useEffect(() => {
-        console.log("IVData changed!", IVData, typeof IVData);
-        if (IVData) {
-            console.log("Rust からデータが返ってきました！", IVData);
-        }
-        else{
-            console.log("データなし")
-        }
-    }, [IVData]);
-
     // モーダルの確定処理
     const handleIVModalConfirm = (selectedKey: string) => {
         setIVSelectedKeyValue(selectedKey);
@@ -68,7 +58,18 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                 keyValue: ivSelectedKeyValue,
                 range: ivSelectedRange,
             });
-            // 必要に応じてここで処理
+            invoke("CalibrateSingleJumpCommand", {tabName:tabId,temp:Number(ivSelectedKeyValue), calibStartIbias:Number(ivSelectedRange[0]), calibEndIbias:Number(ivSelectedRange[1])})
+                .then(() => {
+                    invoke<TESAData>("GetIVCommand", { tabName: tabId })
+                        .then((res) => {
+                            setIVData(res);
+                        })
+                        .catch((e) => console.error(e));
+                })
+                .catch((e) => {
+                    console.error("キャリブレーション中にエラーが発生しました:", e);
+                    alert("キャリブレーション中にエラーが発生しました。\n" + e);
+                });
         }
         // IV選択モード解除＆全表示復帰
         setIVSelecting(false);

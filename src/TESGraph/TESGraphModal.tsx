@@ -39,7 +39,6 @@ export default function PrintModal({ isOpen, onClose ,graphRef}: PrintModalProps
                 console.log("graphRef.current:", graphRef.current);
                 try {
                     const uri = await graphRef.current.exportImage(exportOptions);
-                    console.log("exported uri:", uri);
                     setImageUri(uri);
                 } catch (e) {
                     console.error("exportImage error:", e);
@@ -112,10 +111,10 @@ export default function PrintModal({ isOpen, onClose ,graphRef}: PrintModalProps
 
 
     return (
-        <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center">
+        <Dialog open={isOpen} onClose={onClose} className="fixed inset-0 z-50 flex items-center justify-center text-black">
             <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
             <div className="bg-white p-6 rounded-xl shadow-lg z-10 max-w-4xl w-full">
-                <DialogTitle className="text-lg font-bold mb-4">グラフを画像として保存</DialogTitle>
+                <DialogTitle className="text-lg font-bold mb-4">エクスポート</DialogTitle>
 
                 {/* ⚙️ 設定パネル */}
                 <div className="grid grid-cols-2 gap-4 mb-4">
@@ -179,11 +178,21 @@ export default function PrintModal({ isOpen, onClose ,graphRef}: PrintModalProps
                 </div>
 
                 {/* 💾 保存・閉じる */}
-                <div className="flex gap-4 justify-end">
-                    <Button onClick={handleSave} disabled={!imageUri || saving}>
+                <div className="flex gap-2 justify-end">
+                    <Button
+                        onClick={handleSave}
+                        disabled={!imageUri || saving}
+                        className="inline-flex w-auto items-center gap-2 rounded-md bg-zinc-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-gray-600"
+                    >
                         {saving ? "保存中..." : "ファイルに保存"}
                     </Button>
-                    <Button onClick={onClose} disabled={saving}>閉じる</Button>
+                    <Button
+                        onClick={onClose}
+                        disabled={saving}
+                        className="inline-flex w-auto items-center gap-2 rounded-md bg-red-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-red-600"
+                    >
+                        キャンセル
+                    </Button>
                 </div>
             </div>
         </Dialog>

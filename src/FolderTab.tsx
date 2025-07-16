@@ -6,8 +6,8 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import IVGraph from "@/TESAnalyzer/IVGraph.tsx";
+import RTGraph from "@/TESAnalyzer/RTGraph.tsx";
 import PulseContent from "@/PulseContent";
-import RTContent from "@/TESAnalyzer/RTContent.tsx";
 import {TargetEnum} from "@/TargetContext.tsx";
 
 type TabItem = {
@@ -131,7 +131,7 @@ const DynamicTabs = () => {
                     break;
                 case "RT":
                     targetType = TargetEnum.RT;
-                    content = () => <RTContent tabId={tabId} />;
+                    content = () => <RTGraph tabId={tabId} />;
                     break;
                 case "Pulse":
                     targetType = TargetEnum.Pulse;
@@ -216,7 +216,7 @@ const DynamicTabs = () => {
                 </div>
             </TabList>
 
-            <TabPanels className="text-black bg-zinc-100 flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
+            <TabPanels className="text-black bg-zinc-100 flex-grow flex flex-col min-h-0" id={"tab-panels"}>
                 {tabs.map((tab) => (
                     <TabPanel unmount={false} key={tab.id} className="w-full h-full flex-grow flex flex-col" id="tab-panel">
                         {tab.content()}

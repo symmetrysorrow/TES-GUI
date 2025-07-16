@@ -82,6 +82,7 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
                     dragging = true;
                     lastX = e.clientX;
                     lastY = e.clientY;
+                    console.log("Mouse down at", lastX, lastY);
                 }
             };
             const handleMouseMove = (e: globalThis.MouseEvent) => {
@@ -97,18 +98,36 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
                     const height = plotEl.clientHeight;
 
                     if (xRange && yRange && width > 0 && height > 0) {
-                        const xScale = (xRange[1] - xRange[0]) / width;   // [実座標]/[画素] = 1pxあたりの移動量
+                        const xScale = (xRange[1] - xRange[0]) / width;
                         const yScale = (yRange[1] - yRange[0]) / height;
-                        console.log("xScale", xScale, yScale);
-                        window.Plotly.relayout(plotEl, {
-                            "xaxis.range[0]": xRange[0] - dx * xScale,
-                            "xaxis.range[1]": xRange[1] - dx * xScale,
-                            "yaxis.range[0]": yRange[0] + dy * yScale,
-                            "yaxis.range[1]": yRange[1] + dy * yScale,
-                        });
+                        if (isFinite(xScale) && isFinite(yScale)) {
+                            window.Plotly.relayout(plotEl, {
+                                "xaxis.range[0]": xRange[0] - dx * xScale,
+                                "xaxis.range[1]": xRange[1] - dx * xScale,
+                                "yaxis.range[0]": yRange[0] + dy * yScale,
+                                "yaxis.range[1]": yRange[1] + dy * yScale,
+                            });
+                        }
                     }
                 }
             };
+
+            const handleMouseHover = () => {
+                if (plotEl) {
+                    const xRange = plotEl.layout?.xaxis?.range;
+                    const yRange = plotEl.layout?.yaxis?.range;
+                    if (
+                        !xRange || !yRange ||
+                        xRange.length !== 2 || yRange.length !== 2 ||
+                        !isFinite(xRange[0]) || !isFinite(xRange[1]) ||
+                        !isFinite(yRange[0]) || !isFinite(yRange[1])
+                    ) {
+                        console.log("Invalid ranges detected on hover, forcing redraw");
+                        window.Plotly.redraw(plotEl);
+                    }
+                }
+            };
+
 
             const handleMouseUp = () => {
                 dragging = false;
@@ -120,6 +139,7 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
 
             plotEl.addEventListener("mousedown", handleMouseDown);
             window.addEventListener("mousemove", handleMouseMove);
+            plotEl.addEventListener("mousemove", handleMouseHover);
             window.addEventListener("mouseup", handleMouseUp);
             plotEl.addEventListener("contextmenu", handleContextMenu);
 

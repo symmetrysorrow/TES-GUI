@@ -8,7 +8,8 @@ import React, {
 import TESGraph, { TESGraphProps, TESGraphRef } from "./TESGraph";
 import { PlotData } from "plotly.js";
 import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
-import { Menu} from "lucide-react";
+import { Menu, Printer} from "lucide-react";
+import PrintModal from "@/TESGraph/TESGraphModal.tsx";
 
 
 export interface TESAData {
@@ -58,6 +59,8 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
         ref
     ) => {
         const [selectedTab, setSelectedTab] = useState(tabs[0].label);
+        const [printModalOpen, setPrintModalOpen] = useState(false);
+
 
         // タブごとにTESGraphのrefを作成し保持（初回のみ）
         const innerGraphRefs = useRef<Record<string, React.RefObject<TESGraphRef>>>(
@@ -179,8 +182,14 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
 
         return (
             <div className="flex w-full h-full relative">
+                <PrintModal
+                    isOpen={printModalOpen}
+                    onClose={() => setPrintModalOpen(false)}
+                    graphRef={innerGraphRefs.current[selectedTab]}
+                />
+
                 {/* グラフとタブ */}
-                <div className="flex-grow flex flex-col h-full">
+                <div className="flex-grow flex flex-col">
                     <TabGroup
                         selectedIndex={tabs.findIndex((t) => t.label === selectedTab)}
                         onChange={(i) => setSelectedTab(tabs[i].label)}
@@ -202,6 +211,12 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                 </Tab>
                             ))}
                             <button
+                                onClick={() => setPrintModalOpen(true)}
+                                className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800"
+                            >
+                                <Printer size={20} />
+                            </button>
+                            <button
                                 onClick={onToggleSidebar}
                                 className="absolute right-0 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800"
                             >
@@ -213,7 +228,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                             {tabs.map((tab) => (
                                 <TabPanel key={tab.label} className="flex h-full overflow-hidden" unmount={false}>
                                     {/* グラフ領域：横伸び */}
-                                    <div className="flex-grow h-[calc(100%-40px)]">
+                                    <div className="flex-grow h-[calc(100%-40px)] ml-2">
                                         <TESGraph
                                             ref={innerGraphRefs.current[tab.label]}
                                             data={createPlotData(tab)}

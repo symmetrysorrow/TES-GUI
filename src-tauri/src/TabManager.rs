@@ -69,14 +69,6 @@ impl TabProcessor {
             }
         }
     }
-
-    pub fn AnalyzeFolder(&mut self) -> Result<(), String> {
-        match self {
-            TabProcessor::IV(p) => p.AnalyzeFolder(),
-            TabProcessor::RT(p) => p.AnalyzeFolder(),
-            TabProcessor::Pulse(p) => p.AnalyzeFolder(),
-        }
-    }
 }
 
 #[tauri::command]
@@ -139,14 +131,22 @@ pub fn SetDataPathCommand(TabName: String, path: String) -> Result<(), String> {
     processor.SetDataPath(path)
 }
 
+
+
 #[tauri::command]
-pub fn AnalyzeFolderCommand(TabName: String) -> Result<(), String> {
-    let mut map = PROCESSORS
-        .lock()
-        .map_err(|_| "Failed to lock processor map")?;
-    let processor = map.get_mut(&TabName).ok_or("Tab not found")?;
-    processor.AnalyzeFolder()
+pub async fn AnalyzeIVFolderCommand(tab_name: String) -> Result<(), String> {
+    let result = tokio::task::spawn_blocking(move || {
+        let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
+        match map.get_mut(&tab_name) {
+            Some(TabProcessor::IV(iv)) => iv.AnalyzeIVFolder(),
+            _ => Err("Tab is not an IV Processor".to_string()),
+        }
+    })
+        .await
+        .map_err(|e| format!("Join error: {}", e))?;  // 二重Resultのflatten
+    result
 }
+
 
 #[tauri::command]
 pub fn SaveCalibratedCommand(TabName: String) -> Result<(), String> {
@@ -196,7 +196,6 @@ pub fn CalibrateMultipleJumpCommand(
 #[tauri::command]
 pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
     let map = PROCESSORS.lock().unwrap();
-    println!("GetIVCommand");
     match map.get(&TabName) {
         Some(TabProcessor::IV(p)) => {
             let mut result = serde_json::Map::new();
@@ -233,7 +232,6 @@ pub fn GetIVCommand(TabName: String) -> Result<serde_json::Value, String> {
         _ => Err("Invalid tab or processor type".into()),
     }
 }
-
 #[tauri::command]
 pub fn IVIncrementCommand(TabName: String) -> Result<(), String> {
     let mut map = PROCESSORS.lock().unwrap();
@@ -291,6 +289,19 @@ pub fn GetIVIndexInfoCommand(TabName: String) -> Result<serde_json::Value, Strin
     }
 }
 
+#[tauri::command]
+pub async fn AnalyzeRTFolderCommand(tab_name: String) -> Result<(), String> {
+    let result = tokio::task::spawn_blocking(move || {
+        let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
+        match map.get_mut(&tab_name) {
+            Some(TabProcessor::RT(rt)) => rt.AnalyzeRTFolder(),
+            _ => Err("Tab is not an RT Processor".to_string()),
+        }
+    })
+        .await
+        .map_err(|e| format!("Join error: {}", e))?;  // 二重Resultのflatten
+    result
+}
 
 #[tauri::command]
 pub fn FitRTCommand(TabName: String) -> Result<(), String> {
@@ -345,6 +356,20 @@ pub fn GetRTCommand(TabName: String) -> Result<serde_json::Value, String> {
         }
         _ => Err("Invalid tab or processor type".into()),
     }
+}
+
+#[tauri::command]
+pub async fn AnalyzePulseFolderCommand(tab_name: String) -> Result<(), String> {
+    let result = tokio::task::spawn_blocking(move || {
+        let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
+        match map.get_mut(&tab_name) {
+            Some(TabProcessor::Pulse(p)) => p.AnalyzePulseFolder(),
+            _ => Err("Tab is not an IV Processor".to_string()),
+        }
+    })
+        .await
+        .map_err(|e| format!("Join error: {}", e))?;  // 二重Resultのflatten
+    result
 }
 
 #[tauri::command]

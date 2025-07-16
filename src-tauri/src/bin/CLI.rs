@@ -42,12 +42,13 @@ fn main() {
                     Err(e) => println!("Error: {}", e),
                 }
             }
-            "anl" if args.len() == 2 => {
+            /*"anl" if args.len() == 2 => {
                 match TabManager::AnalyzeFolderCommand(args[1].into()) {
                     Ok(_) => println!("Analysis done."),
                     Err(e) => println!("Error: {}", e),
                 }
             }
+            */
             "getiv" if args.len() == 2 => {
                 match TabManager::GetIVCommand(args[1].into()) {
                     Ok(json) => println!("{}", serde_json::to_string_pretty(&json).unwrap()),

@@ -145,10 +145,8 @@ impl RTProcessorS {
         }
         return Ok(());
     }
-}
-
-impl DataProcessorT for RTProcessorS {
-    fn AnalyzeFolder(&mut self) -> Result<(), String> {
+    
+    pub fn AnalyzeRTFolder(&mut self)->Result<(), String>{
         let RTFiles = glob(&format!("{}/rawdata/CH*.dat", self.DP.DataPath.display()))
             .map_err(|e| format!("Failed to glob RT files at {:?}\n{}", self.DP.DataPath, e))?
             .filter_map(Result::ok)
@@ -221,9 +219,11 @@ impl DataProcessorT for RTProcessorS {
             //println!("Temp_Current: {}", temp);
             println!("eta: {}", self.eta);
         }
-        
+
         self.FitRT()?;
         self.SaveRT()?;
         return Ok(());
     }
 }
+
+

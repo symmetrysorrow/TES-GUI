@@ -316,6 +316,106 @@ impl PulseProcessorS {
         self.PulseInfosCH.insert(*Channel, PulseInfos);
         Ok(())
     }
+
+    pub(crate) fn AnalyzePulseFolder(&mut self) -> Result<(), String> {
+        let JsonPath = self.DP.DataPath.join("PulseConfig.json");
+
+        if !JsonPath.exists() {
+            let JsonPathDefault = PathBuf::from("./Config/PulseConfig.json");
+            if JsonPathDefault.exists() {
+                std::fs::copy(&JsonPathDefault, &JsonPath).map_err(|e| {
+                    format!("Failed to copy.{}\n{}", JsonPathDefault.display(), e).to_string()
+                })?;
+            } else {
+                return Err(format!("Failed to find {}.\n", JsonPathDefault.display()).to_string());
+            }
+        }
+
+        let JsonFile =
+            File::open(&JsonPath).map_err(|e| format!("Failed to open {:?}\n{}", JsonPath, e))?;
+
+        let PPC: PulseProcessorConfig = serde_json::from_reader(JsonFile)
+            .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPath, e))?;
+        self.PRConfig = PPC.Readout;
+        self.PAConfig = PPC.Analysis;
+
+        let mut ConfigChanged = false;
+
+        let JsonPathPre = self.DP.DataPath.join(".PulseConfig.json");
+
+        if JsonPathPre.exists() {
+            let JsonFilePre = File::open(&JsonPathPre)
+                .map_err(|e| format!("Failed to open {:?}\n{}", JsonPathPre, e))?;
+            let PPCPre: PulseProcessorConfig = serde_json::from_reader(JsonFilePre)
+                .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
+            if self.PRConfig != PPCPre.Readout || self.PAConfig != PPCPre.Analysis {
+                ConfigChanged = true;
+            }
+        }
+
+        let ChannelPattern = format!("{}/CH*_pulse", self.DP.DataPath.display());
+
+        self.Channels = glob(&ChannelPattern)
+            .expect("Failed to read glob pattern")
+            .filter_map(Result::ok) // PathBuf の結果を取り出す
+            .filter(|path| path.is_dir()) // ディレクトリのみフィルタ
+            .filter_map(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str()) // OsStr を &str に変換
+                    .and_then(|name| name.strip_prefix("CH")) // "CH" を削除
+                    .and_then(|name| name.strip_suffix("_pulse")) // "_pulse" を削除
+                    .and_then(|name| name.parse::<u32>().ok()) // 数値としてパース
+            })
+            .collect();
+
+        if self.Channels.is_empty() {
+            return Err("Pulse has no channels.".to_string());
+        }
+
+        if cfg!(debug_assertions) {
+            println!("Channels: {:?}", self.Channels);
+        }
+
+        let Channels = self.Channels.clone();
+        let mut InfoCSVExist: HashMap<u32, bool> = HashMap::new();
+
+        for ch in Channels.iter() {
+            let info_path = self
+                .DP
+                .DataPath
+                .join(format!("CH{}_pulse", ch))
+                .join("Info.csv");
+            if info_path.exists() {
+                self.LoadPulseInfos(&ch)?;
+                InfoCSVExist.insert(*ch, true);
+            } else {
+                InfoCSVExist.insert(*ch, false);
+            }
+        }
+
+        for (ch, exist) in InfoCSVExist.iter() {
+            if *exist && !ConfigChanged {
+                println!("continue: {}", ch);
+                continue;
+            }
+            self.AnalyzePulse(ch)?;
+            self.SavePulseInfos(ch)?;
+            print!("Analyzed CH{}.\n", ch);
+        }
+
+        let JsonFilePre = File::create(&JsonPathPre)
+            .map_err(|e| format!("Failed to create {:?}\n{}", JsonPathPre, e))?;
+        serde_json::to_writer_pretty(
+            JsonFilePre,
+            &PulseProcessorConfig {
+                Readout: self.PRConfig.clone(),
+                Analysis: self.PAConfig.clone(),
+            },
+        )
+            .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
+
+        Ok(())
+    }
 }
 
 impl DataProcessorT for PulseProcessorS {

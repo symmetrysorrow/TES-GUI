@@ -418,6 +418,128 @@ impl IVProcessorS {
 
         Ok("IV.png に保存されました".to_string())
     }
+
+    pub(crate) fn AnalyzeIVFolder(&mut self) -> Result<(), String> {
+        self.Temps = glob(&format!("{}/*mK", self.DP.DataPath.display()))
+            .map_err(|e| {
+                format!(
+                    "Failed to glob Temperature folders at {:?}\n{}",
+                    self.DP.DataPath, e
+                )
+            })?
+            .filter_map(Result::ok) // 結果を取り出す
+            .filter(|path| path.is_dir()) // ディレクトリのみをフィルタ
+            .filter_map(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str()) // OsStr を &str に変換
+                    .and_then(|name| {
+                        // "mK" を削除して数値部分をパース
+                        name.trim_end_matches("mK").parse::<u32>().ok() // 数値としてパースできる場合のみ抽出
+                    })
+            })
+            .collect();
+        self.Temps.sort();
+
+        if self.Temps.len() == 0 {
+            return Err(format!(
+                "No temperature folders found in [{}].",
+                self.DP.DataPath.display()
+            )
+                .to_string());
+        }
+
+        if cfg!(debug_assertions) {
+            println!("Temps: {:?}", self.Temps);
+        }
+
+        let IVPattern = Regex::new(r"(\d+)uA\.dat$").map_err(|e| format!("Regex Error\n{}", e))?;
+
+        for temp in self.Temps.iter() {
+            let IVFiles = glob(&format!(
+                "{}/*.dat",
+                self.DP.DataPath.join(format!("{}mk", temp)).display()
+            ))
+                .map_err(|e| format!("Failed to glob IV files at {:?}\n{}", self.DP.DataPath, e))?
+                .filter_map(Result::ok)
+                .collect::<Vec<PathBuf>>();
+            let mut V_out: Vec<f64> = Vec::new();
+            let mut I_bias: Vec<f64> = Vec::new();
+            for IVFile in IVFiles {
+                let V_out_data = LoadTxt(IVFile.as_path())?;
+                V_out.push(
+                    V_out_data
+                        .mean()
+                        .ok_or("Failed to calculate mean of ndarray".to_string())?,
+                );
+                let IVFile_str = IVFile.to_string_lossy();
+                // `\d+` で数字部分をキャプチャ
+                let I = IVPattern
+                    .captures(&IVFile_str)
+                    .and_then(|caps| caps.get(1)) // 1つ目のキャプチャグループを取得
+                    .and_then(|m| m.as_str().parse::<u32>().ok())
+                    .ok_or("Failed to parse I_bias".to_string())?; // `u32` に変換
+                I_bias.push(I as f64);
+            }
+            // I_bias と V_out をペアにする
+            let mut paired: Vec<(f64, f64)> =
+                I_bias.iter().cloned().zip(V_out.iter().cloned()).collect();
+
+            // I_bias に基づいてソート
+            paired.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap()); // I_bias（a.0）でソート
+
+            // ソート後に I_bias と V_out を再度分ける
+            I_bias = paired.iter().map(|(i, _)| *i).collect();
+            V_out = paired.iter().map(|(_, v)| *v).collect();
+            if cfg!(debug_assertions) {
+                //println!("V_out: {:?}", V_out);
+                //println!("I_bias: {:?}", I_bias);
+                //println!();
+            }
+            Offset(&mut V_out);
+            self.V_out_history_temps
+                .insert(*temp, vec![Array1::from(V_out)]);
+            self.I_bias_temps.insert(*temp, Array1::from(I_bias));
+        }
+
+        let CalibPath = self.DP.DataPath.join("Calibration");
+        if !CalibPath.exists() {
+            fs::create_dir_all(&CalibPath)
+                .map_err(|_| format!("Failed to crate {}.", CalibPath.display()))?;
+        // 存在しない場合ディレクトリを作成
+        } else {
+            let mut Calibrated=false;
+            for temp in self.Temps.iter() {
+                let calib_file = CalibPath.join(format!("{}mk.dat", temp));
+                if calib_file.exists() {
+                    let V_out = LoadTxt(calib_file.as_path())?;
+                    if let Some(V_out_history) = self.V_out_history_temps.get_mut(temp) {
+                        if V_out.len()
+                            == self
+                            .I_bias_temps
+                            .get(temp)
+                            .ok_or(format!("{}", temp).to_string())?
+                            .len()
+                        {
+                            V_out_history.push(V_out);
+                            Calibrated=true;
+                        }
+                    }
+                } else {
+                    // キャリブレーションファイルがない場合、現在のVを履歴に追加
+                    if let Some(V_out_history) = self.V_out_history_temps.get_mut(temp) {
+                        let V_out_init=V_out_history[0].clone();
+                        V_out_history.push(V_out_init);
+                    }
+                }
+            }
+            if Calibrated {
+                self.CurrentIndex=1;
+            }
+
+        }
+        self.CalculateR_TES()?;
+        Ok(())
+    }
 }
 
 impl DataProcessorT for IVProcessorS {

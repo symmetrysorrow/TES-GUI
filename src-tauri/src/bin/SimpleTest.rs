@@ -16,7 +16,7 @@ fn main() -> Result<(), String> {
 
     let mut RT=TESAnalyzer::RT::RTProcessorS::new();
     RT.SetDataPath(Path::new("Test/RT"));
-    RT.AnalyzeFolder()?;
+    RT.AnalyzeRTFolder()?;
     RT.FitRT()?;
 
     let mut P=PulseProcessor::PulseProcessorS::new();

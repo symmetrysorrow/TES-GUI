@@ -124,6 +124,9 @@ const DynamicTabs = () => {
             let targetType: TargetEnum | null = null;
             let content = () => <></>;
 
+            await invoke("RegisterProcessor", { tabName: tabId, processorType: folderType });
+            await invoke("SetDataPathCommand", { tabName: tabId, path: folderPath });
+
             switch (folderType) {
                 case "IV":
                     targetType = TargetEnum.IV;
@@ -138,10 +141,6 @@ const DynamicTabs = () => {
                     //content = () => <PulseContent tabId={tabId} />;
                     break;
             }
-
-            await invoke("RegisterProcessor", { tabName: tabId, processorType: folderType });
-            await invoke("SetDataPathCommand", { tabName: tabId, path: folderPath });
-            await invoke("AnalyzeFolderCommand", { tabName: tabId });
 
             setTabs((prev) =>
                 prev.map((tab) =>

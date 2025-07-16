@@ -4,30 +4,36 @@ import {invoke} from "@tauri-apps/api/core";
 import {TESGraphRef} from "@/TESGraph/TESGraph.tsx";
 
 const rtTabs = [
-    { id: "IV", label: "IV", xKey: "Temp", yKey: "R_tes", defaultTitle: "RT", defaultXaxis: "Temp", defaultYaxis: "R_tes" },
-    { id: "IR", label: "IR", xKey: "BiasPoint", yKey: "Alpha", defaultTitle: "Alpha", defaultXaxis: "Bias Point", defaultYaxis: "Alpha" },
+    { label: "RT", xKey: "Temp", yKey: "R_tes", defaultTitle: "RT", defaultXaxis: "Temp", defaultYaxis: "R_tes" },
+    { label: "Alpha", xKey: "BiasPoint", yKey: "Alpha", defaultTitle: "Alpha", defaultXaxis: "Bias Point", defaultYaxis: "Alpha" },
 ];
 
 const RTGraph = ({ tabId }: { tabId: string }) => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const [IVData, setIVData] = useState<TESAData | null>(null);
+    const [RTData, setRTData] = useState<TESAData | null>(null);
     //const safeData: TESAData = IVData ?? defaultData;
 
     const graphRef = useRef<TESGraphRef>(null);
 
     useEffect(() => {
-        invoke<TESAData>("GetRTCommand", { tabName: tabId })
-            .then((res) => {
-                console.log("Fetched data:", res);
-                setIVData(res);
+        setIsLoading(true);
+        console.log("Now Loading")
+        invoke("AnalyzeRTFolderCommand", { tabName: tabId })
+            .then(async () => {
+                invoke<TESAData>("GetRTCommand", { tabName: tabId })
+                    .then(async (res) => {
+                        setRTData(res);
+                        setIsLoading(false);
+                    })
+                    .catch((e) => console.error(e));
             })
-            .catch((e) => console.error(e));
     }, [tabId]);
 
     // TESAGraphへのprops
     const graphProps = {
-        data: IVData??{},
+        data: RTData??{},
         tabs: rtTabs,
         unitLabel: "microA",
         sidebarOpen,
@@ -36,10 +42,10 @@ const RTGraph = ({ tabId }: { tabId: string }) => {
 
     return (
         <div className="h-full flex flex-col">
-            {IVData === null ? (
+            {isLoading ? (
                 // Loading 表示
-                <div className="flex flex-1 flex-col items-center justify-center text-white text-xl">
-                    <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="flex flex-1 flex-col items-center justify-center text-black text-xl">
+                    <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mb-4"></div>
                     Loading...
                 </div>
             ) : (

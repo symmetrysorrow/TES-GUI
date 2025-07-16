@@ -218,7 +218,7 @@ const DynamicTabs = () => {
 
             <TabPanels className="text-black bg-zinc-100 flex-grow flex flex-col h-full min-h-0" id={"tab-panels"}>
                 {tabs.map((tab) => (
-                    <TabPanel unmount={false} key={tab.id} className="w-full flex-grow flex flex-col" id="tab-panel">
+                    <TabPanel unmount={false} key={tab.id} className="w-full h-full flex-grow flex flex-col" id="tab-panel">
                         {tab.content()}
                     </TabPanel>
                 ))}

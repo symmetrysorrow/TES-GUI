@@ -180,10 +180,11 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
         return (
             <div className="flex w-full h-full relative">
                 {/* グラフとタブ */}
-                <div className="flex-grow flex flex-col">
+                <div className="flex-grow flex flex-col h-full">
                     <TabGroup
                         selectedIndex={tabs.findIndex((t) => t.label === selectedTab)}
                         onChange={(i) => setSelectedTab(tabs[i].label)}
+                        className="min-h-0 h-full"
                     >
                         <TabList className="relative flex justify-center border-b border-gray-400 px-2">
                             {tabs.map((tab) => (
@@ -208,11 +209,11 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                             </button>
                         </TabList>
 
-                        <TabPanels className="flex-grow">
+                        <TabPanels className="flex-grow min-h-0 h-full">
                             {tabs.map((tab) => (
-                                <TabPanel key={tab.label} className="flex h-full" unmount={false}>
+                                <TabPanel key={tab.label} className="flex h-full overflow-hidden" unmount={false}>
                                     {/* グラフ領域：横伸び */}
-                                    <div className="flex-grow h-full min-w-0">
+                                    <div className="flex-grow h-[calc(100%-40px)]">
                                         <TESGraph
                                             ref={innerGraphRefs.current[tab.label]}
                                             data={createPlotData(tab)}
@@ -227,8 +228,8 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
 
                                     {/* 右側の固定幅サイドバー */}
                                     {sidebarOpen && (
-                                        <div className="w-64 h-full flex-col border-l border-gray-300">
-                                            <div className="flex-1 overflow-y-auto p-4">
+                                        <div className="w-64 flex  flex-col border-l border-gray-300">
+                                            <div className="overflow-y-auto p-4">
                                                 {/* 表示設定パネルの中身 */}
                                                 <h2 className="text-lg font-bold mb-4">表示設定</h2>
                                                 {/* タイトル・軸設定 */}

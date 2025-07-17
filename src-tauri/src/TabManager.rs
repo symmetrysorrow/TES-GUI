@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use crate::DataProcessor::{DataProcessorT, LoadBi};
+use crate::DataProcessor::{LoadBi};
 use crate::PulseProcessor::PulseProcessorS;
 use crate::TESAnalyzer::IV::IVProcessorS;
 use crate::TESAnalyzer::RT::RTProcessorS;
@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
+use tauri::Emitter;
 
 pub enum TabProcessor {
     IV(IVProcessorS),
@@ -359,18 +360,32 @@ pub fn GetRTCommand(TabName: String) -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
-pub async fn AnalyzePulseFolderCommand(tab_name: String) -> Result<(), String> {
+pub async fn AnalyzePulseFolderCommand(window: tauri::Window, tab_name: String) -> Result<(), String> {
     let result = tokio::task::spawn_blocking(move || {
         let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
         match map.get_mut(&tab_name) {
-            Some(TabProcessor::Pulse(p)) => p.AnalyzePulseFolder(),
+            Some(TabProcessor::Pulse(p)) => {
+                // クロージャを定義
+                let on_channel_done = |done: u32, total: u32, ch: u32| {
+                    let _ = window.emit(
+                        "pulse-channel-done",
+                        serde_json::json!({ "done": done, "total": total, "channel": ch })
+                    );
+                };
+                let on_pulse_progress = |progress: u32, ch: u32| {
+                    let _ = window.emit(
+                        "pulse-progress",
+                        serde_json::json!({ "progress": progress, "channel": ch })
+                    );
+                };
+                p.AnalyzePulseFolder(on_channel_done, on_pulse_progress)
+            },
             _ => Err("Tab is not an IV Processor".to_string()),
         }
-    })
-        .await
-        .map_err(|e| format!("Join error: {}", e))?;  // 二重Resultのflatten
+    }).await.map_err(|e| format!("Join error: {}", e))?;
     result
 }
+
 
 #[tauri::command]
 pub fn GetPulseInfoCommand(TabName: String) -> Result<serde_json::Value, String> {

@@ -21,7 +21,7 @@ fn main() -> Result<(), String> {
 
     let mut P=PulseProcessor::PulseProcessorS::new();
     P.SetDataPath(Path::new("Test/Pulse"));
-    P.AnalyzeFolder()?;
+    P.AnalyzePulseFolder()?;
 
     let folder:String=TabManager::FindFolderType("Test/Pulse".to_string())?;
 

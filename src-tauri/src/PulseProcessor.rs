@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use crate::Config::{PulseAnalysisConfig, PulseProcessorConfig, PulseReadoutConfig};
-use crate::DataProcessor::{DataProcessorS, DataProcessorT, LoadBi};
+use crate::DataProcessor::{DataProcessorS, LoadBi};
 use crate::PyMod::BesselCoefficients;
 use biquad::{Biquad, Coefficients, DirectForm2Transposed};
 use glob::glob;
@@ -11,6 +11,8 @@ use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use rayon::prelude::*;
+use std::sync::{Mutex, atomic::{AtomicUsize, Ordering}, Arc};
 
 fn ApplyFilter(coefficients: Coefficients<f64>, signal: &Vec<f64>) -> Vec<f64> {
     let mut filter = DirectForm2Transposed::<f64>::new(coefficients);
@@ -34,6 +36,7 @@ pub fn filtfilt(signal: &Vec<f64>, Coefficients: Vec<Vec<f64>>) -> Vec<f64> {
 }
 
 #[derive(Serialize)]
+#[derive(Debug)]
 pub struct PulseInfoS {
     Base: f64,
     PeakAverage: f64,
@@ -267,7 +270,7 @@ impl PulseProcessorS {
         return Ok((PI, PIH, PAH));
     }
 
-    pub fn AnalyzePulse(&mut self, Channel: &u32) -> Result<(), String> {
+    pub fn AnalyzePulse<G: FnMut(u32)>(&mut self, Channel: &u32, mut progress_callback: G) -> Result<(), String> {
         let PulsePattern =
             Regex::new(r"CH\d+_(\d+)\.dat$").map_err(|e| format!("Regex Error\n{}", e))?;
 
@@ -277,14 +280,12 @@ impl PulseProcessorS {
             Channel,
             Channel
         ))
-        .map_err(|e| {
-            format!(
-                "Failed to glob Pulse files at {:?}\n{}",
-                self.DP.DataPath, e
-            )
-        })?
-        .filter_map(Result::ok) // 結果を取り出す を `PathBuf` に変換
-        .collect::<Vec<_>>();
+            .map_err(|e| format!("Failed to glob Pulse files at {:?}\n{}", self.DP.DataPath, e))?
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>();
+
+        let Total = PulsePaths.len() as u32;
+        let Done = Arc::new(AtomicUsize::new(0));
 
         let Numbers: Vec<i32> = PulsePaths
             .iter()
@@ -298,26 +299,60 @@ impl PulseProcessorS {
             })
             .collect();
 
-        let mut PulseInfos: HashMap<u32, PulseInfoS> = HashMap::new();
-
         let rt = tokio::runtime::Runtime::new().unwrap();
-
         self.BesselCoeffs = rt.block_on(BesselCoefficients(
             self.PRConfig.Rate,
             self.PAConfig.CutoffFrequency,
         ))?;
 
-        for (Num, Path) in Numbers.iter().zip(PulsePaths.iter()) {
-            let Pulse = LoadBi(&Path)?;
-            let FilteredPulse = filtfilt(&Pulse.to_vec(), self.BesselCoeffs.clone());
-            let (PI, _PIH, _PAH) = self.GetPulseInfo(Array1::from(FilteredPulse))?;
-            PulseInfos.insert(*Num as u32, PI);
+        let PulseInfosMutex = Arc::new(Mutex::new(HashMap::new()));
+        let done_clone = Arc::clone(&Done);
+        
+        // -----------------------
+        // メインスレッドでrayonを直接呼ぶ
+        // -----------------------
+        Numbers.par_iter()
+            .zip(PulsePaths.par_iter())
+            .for_each(|(Num, Path)| {
+                if let Ok(Pulse) = LoadBi(&Path) {
+                    let FilteredPulse = filtfilt(&Pulse.to_vec(), self.BesselCoeffs.clone());
+                    if let Ok((PI, _PIH, _PAH)) = self.GetPulseInfo(Array1::from(FilteredPulse)) {
+                        let mut map = PulseInfosMutex.lock().unwrap();
+                        map.insert(*Num as u32, PI);
+                    }
+                }
+                done_clone.fetch_add(1, Ordering::SeqCst);
+            });
+
+        while Done.load(Ordering::SeqCst) < Total as usize {
+            let current = Done.load(Ordering::SeqCst) as u32;
+            progress_callback((current * 100) / Total);
+            std::thread::sleep(std::time::Duration::from_secs(1));
         }
+
+        let PulseInfos = Arc::try_unwrap(PulseInfosMutex)
+            .expect("Arc still has multiple owners")
+            .into_inner()
+            .unwrap();
+
         self.PulseInfosCH.insert(*Channel, PulseInfos);
+
         Ok(())
     }
-
-    pub(crate) fn AnalyzePulseFolder(&mut self) -> Result<(), String> {
+    
+    
+    pub fn AnalyzePulseFolder<
+        F: FnMut(u32, u32, u32),
+        G: FnMut(u32, u32),
+    >(
+        &mut self,
+        mut OnChannelDone: F,
+        mut OnPulseProgress: G,
+    ) -> Result<(), String> {
+        
+        let Total=self.Channels.len() as u32;
+        let mut Done:u32=0;
+        
         let JsonPath = self.DP.DataPath.join("PulseConfig.json");
 
         if !JsonPath.exists() {
@@ -394,13 +429,18 @@ impl PulseProcessorS {
         }
 
         for (ch, exist) in InfoCSVExist.iter() {
+            let mut inner_progress = |progress_percent: u32| {
+                OnPulseProgress(progress_percent, *ch);
+            };
             if *exist && !ConfigChanged {
                 println!("continue: {}", ch);
                 continue;
             }
-            self.AnalyzePulse(ch)?;
+            self.AnalyzePulse(ch, &mut inner_progress)?;
             self.SavePulseInfos(ch)?;
             print!("Analyzed CH{}.\n", ch);
+            Done+=1;
+            OnChannelDone(Done,Total,*ch);
         }
 
         let JsonFilePre = File::create(&JsonPathPre)
@@ -413,108 +453,6 @@ impl PulseProcessorS {
             },
         )
             .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
-
-        Ok(())
-    }
-}
-
-impl DataProcessorT for PulseProcessorS {
-    fn AnalyzeFolder(&mut self) -> Result<(), String> {
-        let JsonPath = self.DP.DataPath.join("PulseConfig.json");
-
-        if !JsonPath.exists() {
-            let JsonPathDefault = PathBuf::from("./Config/PulseConfig.json");
-            if JsonPathDefault.exists() {
-                std::fs::copy(&JsonPathDefault, &JsonPath).map_err(|e| {
-                    format!("Failed to copy.{}\n{}", JsonPathDefault.display(), e).to_string()
-                })?;
-            } else {
-                return Err(format!("Failed to find {}.\n", JsonPathDefault.display()).to_string());
-            }
-        }
-
-        let JsonFile =
-            File::open(&JsonPath).map_err(|e| format!("Failed to open {:?}\n{}", JsonPath, e))?;
-
-        let PPC: PulseProcessorConfig = serde_json::from_reader(JsonFile)
-            .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPath, e))?;
-        self.PRConfig = PPC.Readout;
-        self.PAConfig = PPC.Analysis;
-
-        let mut ConfigChanged = false;
-
-        let JsonPathPre = self.DP.DataPath.join(".PulseConfig.json");
-
-        if JsonPathPre.exists() {
-            let JsonFilePre = File::open(&JsonPathPre)
-                .map_err(|e| format!("Failed to open {:?}\n{}", JsonPathPre, e))?;
-            let PPCPre: PulseProcessorConfig = serde_json::from_reader(JsonFilePre)
-                .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
-            if self.PRConfig != PPCPre.Readout || self.PAConfig != PPCPre.Analysis {
-                ConfigChanged = true;
-            }
-        }
-
-        let ChannelPattern = format!("{}/CH*_pulse", self.DP.DataPath.display());
-
-        self.Channels = glob(&ChannelPattern)
-            .expect("Failed to read glob pattern")
-            .filter_map(Result::ok) // PathBuf の結果を取り出す
-            .filter(|path| path.is_dir()) // ディレクトリのみフィルタ
-            .filter_map(|path| {
-                path.file_name()
-                    .and_then(|name| name.to_str()) // OsStr を &str に変換
-                    .and_then(|name| name.strip_prefix("CH")) // "CH" を削除
-                    .and_then(|name| name.strip_suffix("_pulse")) // "_pulse" を削除
-                    .and_then(|name| name.parse::<u32>().ok()) // 数値としてパース
-            })
-            .collect();
-
-        if self.Channels.is_empty() {
-            return Err("Pulse has no channels.".to_string());
-        }
-
-        if cfg!(debug_assertions) {
-            println!("Channels: {:?}", self.Channels);
-        }
-
-        let Channels = self.Channels.clone();
-        let mut InfoCSVExist: HashMap<u32, bool> = HashMap::new();
-
-        for ch in Channels.iter() {
-            let info_path = self
-                .DP
-                .DataPath
-                .join(format!("CH{}_pulse", ch))
-                .join("Info.csv");
-            if info_path.exists() {
-                self.LoadPulseInfos(&ch)?;
-                InfoCSVExist.insert(*ch, true);
-            } else {
-                InfoCSVExist.insert(*ch, false);
-            }
-        }
-
-        for (ch, exist) in InfoCSVExist.iter() {
-            if *exist && !ConfigChanged {
-                println!("continue: {}", ch);
-                continue;
-            }
-            self.AnalyzePulse(ch)?;
-            self.SavePulseInfos(ch)?;
-            print!("Analyzed CH{}.\n", ch);
-        }
-
-        let JsonFilePre = File::create(&JsonPathPre)
-            .map_err(|e| format!("Failed to create {:?}\n{}", JsonPathPre, e))?;
-        serde_json::to_writer_pretty(
-            JsonFilePre,
-            &PulseProcessorConfig {
-                Readout: self.PRConfig.clone(),
-                Analysis: self.PAConfig.clone(),
-            },
-        )
-        .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
 
         Ok(())
     }

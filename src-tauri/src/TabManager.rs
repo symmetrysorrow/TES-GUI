@@ -373,10 +373,9 @@ pub async fn AnalyzePulseFolderCommand(window: tauri::Window, tab_name: String) 
                     );
                 };
                 let on_pulse_progress = |progress: u32, ch: u32| {
-                    let _ = window.emit(
-                        "pulse-progress",
-                        serde_json::json!({ "progress": progress, "channel": ch })
-                    );
+                    if let Err(e) = window.emit("pulse-progress", serde_json::json!({ "progress": progress, "channel": ch })) {
+                        eprintln!("Failed to emit pulse-progress: {}", e);
+                    }
                 };
                 p.AnalyzePulseFolder(on_channel_done, on_pulse_progress)
             },
@@ -435,10 +434,13 @@ pub fn GetPulseAnalysisCommand(
                 key
             ));
 
+            let PRConfig = p.PRConfig.clone();
+            let PAConfig = p.PAConfig.clone();
+
             let Pulse = LoadBi(Path::new(&path))?;
             let FilteredPulse =
                 crate::PulseProcessor::filtfilt(&Pulse.to_vec(), p.BesselCoeffs.clone());
-            let (PI, PIH, PAH) = p.GetPulseInfo(Array1::from(FilteredPulse.clone()))?;
+            let (PI, PIH, PAH) = crate::PulseProcessor::GetPulseInfo(&PRConfig, &PAConfig,Array1::from( FilteredPulse.clone()))?;
 
             // Pulse と FilteredPulse を JSON に変換して挿入
             result.insert(

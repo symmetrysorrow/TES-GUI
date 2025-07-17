@@ -7,8 +7,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import IVGraph from "@/TESAnalyzer/IVGraph.tsx";
 import RTGraph from "@/TESAnalyzer/RTGraph.tsx";
-import PulseContent from "@/PulseContent";
 import {TargetEnum} from "@/TargetContext.tsx";
+import PulseGraph from "@/TESAnalyzer/PulseGraph.tsx";
 
 type TabItem = {
     id: string;
@@ -138,7 +138,7 @@ const DynamicTabs = () => {
                     break;
                 case "Pulse":
                     targetType = TargetEnum.Pulse;
-                    //content = () => <PulseContent tabId={tabId} />;
+                    content = () => <PulseGraph tabId={tabId} />;
                     break;
             }
 

@@ -154,7 +154,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                                         if (typeof selected === "string") handleIVModalConfirm(selected);
                                     }}
                                 >
-                                    {Object.keys(IVData).map((current) => (
+                                    {Object.keys(IVData??{}).map((current) => (
                                         <label
                                             key={current}
                                             className="block mb-1 cursor-pointer hover:bg-white/10 rounded px-2 py-1 text-white"
@@ -197,7 +197,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                             visibleKeys={
                                 ivSelecting && ivSelectedKeyValue
                                     ? [ivSelectedKeyValue]
-                                    : Object.keys(IVData)
+                                    : Object.keys(IVData??{})
                             }
                         />
                     </div>

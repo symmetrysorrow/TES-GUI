@@ -1,4 +1,6 @@
 #![allow(non_snake_case)]
+
+use std::cmp::max;
 use crate::Config::{PulseAnalysisConfig, PulseProcessorConfig, PulseReadoutConfig};
 use crate::DataProcessor::{DataProcessorS, LoadBi};
 use crate::PyMod::BesselCoefficients;
@@ -34,6 +36,80 @@ pub fn filtfilt(signal: &Vec<f64>, Coefficients: Vec<Vec<f64>>) -> Vec<f64> {
     filtered.reverse();
     return filtered;
 }
+
+pub fn GetPulseInfo(
+    PRConfig: &PulseReadoutConfig,
+    PAConfig: &PulseAnalysisConfig,
+    mut Pulse: Array1<f64>,
+) -> Result<(PulseInfoS, PulseInfoHelperS, PulseAnalysisHelperS), String> {
+    let mut PI = PulseInfoS::new();
+    let mut PIH = PulseInfoHelperS::new();
+    let mut PAH = PulseAnalysisHelperS::new(PRConfig, PAConfig);
+
+    if Pulse.len()as u32<=max(PAH.BaseEnd, max(PAH.PeakSearch, PAH.PeakAverageEnd)){
+        return Err("Data length is too short".to_string());
+    }
+
+    PI.Base = Pulse
+        .slice(s![PAH.BaseStart as usize..PAH.BaseEnd as usize])
+        .mean()
+        .ok_or("Failed to calculate mean of ndarray when calculate base")?;
+    Pulse -= PI.Base;
+
+    PIH.Peak = Pulse
+        .slice(s![PRConfig.PreSample as usize..PAH.PeakSearch as usize])
+        .iter()
+        .cloned()
+        .fold(f64::NEG_INFINITY, f64::max);
+    PI.PeakIndex = Pulse
+        .slice(s![PRConfig.PreSample as usize..PAH.PeakSearch as usize])
+        .iter()
+        .enumerate()
+        .max_by(|(_, x), (_, y)| x.partial_cmp(y).unwrap())
+        .map(|(i, _)| i + PRConfig.PreSample as usize)
+        .unwrap() as u32; // スライス内のインデックスを元のインデックスに補正
+    PAH.PeakAverageStart = PI.PeakIndex - PAConfig.PeakAveragePreSample;
+    PAH.PeakAverageEnd = PI.PeakIndex + PAConfig.PeakAveragePostSample;
+    PI.PeakAverage = Pulse
+        .slice(s![
+                PAH.PeakAverageStart as usize..PAH.PeakAverageEnd as usize
+            ])
+        .mean()
+        .ok_or("Failed to calculate mean of ndarray when calculate average")?;
+
+    for i in (0usize..PI.PeakIndex as usize).rev() {
+        if Pulse[i] < PI.PeakAverage * PAConfig.RiseHighRatio {
+            PIH.RiseHighIndex = i;
+            break;
+        }
+    }
+    for i in 0..PIH.RiseHighIndex {
+        if Pulse[i] > PI.PeakAverage * PAConfig.RiseLowRatio {
+            PIH.RiseLowIndex = i;
+            break;
+        }
+    }
+    PI.RiseTime = (PIH.RiseHighIndex - PIH.RiseLowIndex) as f64 / PRConfig.Rate;
+
+    for i in PI.PeakIndex as usize..Pulse.len() {
+        if Pulse[i] < PI.PeakAverage * PAConfig.DecayHighRatio {
+            PIH.DecayHighIndex = i;
+            break;
+        }
+    }
+
+    for i in PIH.DecayHighIndex..Pulse.len() {
+        if Pulse[i] < PI.PeakAverage * PAConfig.DecayLowRatio {
+            PIH.DecayLowIndex = i;
+            break;
+        }
+    }
+
+    PI.DecayTime = (PIH.DecayLowIndex as f64 - PIH.DecayHighIndex as f64) / PRConfig.Rate;
+
+    return Ok((PI, PIH, PAH));
+}
+
 
 #[derive(Serialize)]
 #[derive(Debug)]
@@ -101,8 +177,8 @@ impl PulseAnalysisHelperS {
 
 pub struct PulseProcessorS {
     pub DP: DataProcessorS,
-    PRConfig: PulseReadoutConfig,
-    PAConfig: PulseAnalysisConfig,
+    pub(crate) PRConfig: PulseReadoutConfig,
+    pub(crate) PAConfig: PulseAnalysisConfig,
     pub Channels: HashSet<u32>,
     pub PulseInfosCH: HashMap<u32, HashMap<u32, PulseInfoS>>,
     pub BesselCoeffs: Vec<Vec<f64>>,
@@ -199,148 +275,87 @@ impl PulseProcessorS {
         Ok(())
     }
 
-    pub fn GetPulseInfo(
-        &self,
-        mut Pulse: Array1<f64>,
-    ) -> Result<(PulseInfoS, PulseInfoHelperS, PulseAnalysisHelperS), String> {
-        let mut PI = PulseInfoS::new();
-        let mut PIH = PulseInfoHelperS::new();
-
-        let mut PAH = PulseAnalysisHelperS::new(&self.PRConfig, &self.PAConfig);
-
-        PI.Base = Pulse
-            .slice(s![PAH.BaseStart as usize..PAH.BaseEnd as usize])
-            .mean()
-            .ok_or("Failed to calculate mean of ndarray")?;
-        Pulse -= PI.Base;
-
-        PIH.Peak = Pulse
-            .slice(s![self.PRConfig.PreSample as usize
-                ..(self.PRConfig.PreSample + self.PAConfig.PeakSearchSample)
-                    as usize])
-            .iter()
-            .cloned()
-            .fold(f64::NEG_INFINITY, f64::max);
-        PI.PeakIndex = Pulse
-            .slice(s![self.PRConfig.PreSample as usize..PAH.PeakSearch as usize])
-            .iter()
-            .enumerate()
-            .max_by(|(_, x), (_, y)| x.partial_cmp(y).unwrap())
-            .map(|(i, _)| i + self.PRConfig.PreSample as usize)
-            .unwrap() as u32; // スライス内のインデックスを元のインデックスに補正
-        PAH.PeakAverageStart = PI.PeakIndex - self.PAConfig.PeakAveragePreSample;
-        PAH.PeakAverageEnd = PI.PeakIndex + self.PAConfig.PeakAveragePostSample;
-        PI.PeakAverage = Pulse
-            .slice(s![
-                PAH.PeakAverageStart as usize..PAH.PeakAverageEnd as usize
-            ])
-            .mean()
-            .ok_or("Failed to calculate mean of ndarray")?;
-
-        for i in (0usize..PI.PeakIndex as usize).rev() {
-            if Pulse[i] < PI.PeakAverage * self.PAConfig.RiseHighRatio {
-                PIH.RiseHighIndex = i;
-                break;
-            }
-        }
-        for i in 0..PIH.RiseHighIndex {
-            if Pulse[i] > PI.PeakAverage * self.PAConfig.RiseLowRatio {
-                PIH.RiseLowIndex = i;
-                break;
-            }
-        }
-        PI.RiseTime = (PIH.RiseHighIndex - PIH.RiseLowIndex) as f64 / self.PRConfig.Rate;
-
-        for i in PI.PeakIndex as usize..Pulse.len() {
-            if Pulse[i] < PI.PeakAverage * self.PAConfig.DecayHighRatio {
-                PIH.DecayHighIndex = i;
-                break;
-            }
-        }
-
-        for i in PIH.DecayHighIndex..Pulse.len() {
-            if Pulse[i] < PI.PeakAverage * self.PAConfig.DecayLowRatio {
-                PIH.DecayLowIndex = i;
-                break;
-            }
-        }
-
-        PI.DecayTime = (PIH.DecayLowIndex as f64 - PIH.DecayHighIndex as f64) / self.PRConfig.Rate;
-
-        return Ok((PI, PIH, PAH));
-    }
 
     pub fn AnalyzePulse<G: FnMut(u32)>(&mut self, Channel: &u32, mut progress_callback: G) -> Result<(), String> {
-        let PulsePattern =
-            Regex::new(r"CH\d+_(\d+)\.dat$").map_err(|e| format!("Regex Error\n{}", e))?;
+        let pulse_pattern = Regex::new(r"CH\d+_(\d+)\.dat$").map_err(|e| format!("Regex Error\n{}", e))?;
 
-        let PulsePaths = glob(&format!(
+        let pulse_paths = glob(&format!(
             "{}/CH{}_pulse/rawdata/CH{}_*.dat",
             self.DP.DataPath.display(),
             Channel,
             Channel
         ))
-            .map_err(|e| format!("Failed to glob Pulse files at {:?}\n{}", self.DP.DataPath, e))?
+            .map_err(|e| format!("Failed to glob Pulse files: {}", e))?
             .filter_map(Result::ok)
             .collect::<Vec<_>>();
 
-        let Total = PulsePaths.len() as u32;
-        let Done = Arc::new(AtomicUsize::new(0));
+        let total = pulse_paths.len() as u32;
+        let done = Arc::new(AtomicUsize::new(0));
 
-        let Numbers: Vec<i32> = PulsePaths
-            .iter()
+        let numbers: Vec<i32> = pulse_paths.iter()
             .filter_map(|path| {
-                PulsePattern
-                    .captures(path.to_string_lossy().as_ref())?
-                    .get(1)?
-                    .as_str()
-                    .parse::<i32>()
-                    .ok()
+                pulse_pattern.captures(path.to_string_lossy().as_ref())?
+                    .get(1)?.as_str().parse::<i32>().ok()
             })
             .collect();
 
+        // Besselフィルタ係数の計算（同期）
         let rt = tokio::runtime::Runtime::new().unwrap();
         self.BesselCoeffs = rt.block_on(BesselCoefficients(
             self.PRConfig.Rate,
             self.PAConfig.CutoffFrequency,
         ))?;
 
-        let PulseInfosMutex = Arc::new(Mutex::new(HashMap::new()));
-        let done_clone = Arc::clone(&Done);
-        
-        // -----------------------
-        // メインスレッドでrayonを直接呼ぶ
-        // -----------------------
-        Numbers.par_iter()
-            .zip(PulsePaths.par_iter())
-            .for_each(|(Num, Path)| {
-                if let Ok(Pulse) = LoadBi(&Path) {
-                    let FilteredPulse = filtfilt(&Pulse.to_vec(), self.BesselCoeffs.clone());
-                    if let Ok((PI, _PIH, _PAH)) = self.GetPulseInfo(Array1::from(FilteredPulse)) {
-                        let mut map = PulseInfosMutex.lock().unwrap();
-                        map.insert(*Num as u32, PI);
-                    }
-                }
-                done_clone.fetch_add(1, Ordering::SeqCst);
-            });
+        let pulse_infos_mutex = Arc::new(Mutex::new(HashMap::new()));
+        let done_clone = Arc::clone(&done);
 
-        while Done.load(Ordering::SeqCst) < Total as usize {
-            let current = Done.load(Ordering::SeqCst) as u32;
-            progress_callback((current * 100) / Total);
+        let PRConfig = self.PRConfig.clone();
+        let PAConfig = self.PAConfig.clone();
+
+        // Rayon 並列処理を別スレッドで起動
+        let bessel_clone = self.BesselCoeffs.clone();
+        let pulse_infos_clone = Arc::clone(&pulse_infos_mutex);
+        let numbers_clone = numbers.clone();
+        let paths_clone = pulse_paths.clone();
+        let handle = std::thread::spawn(move || {
+            numbers_clone.par_iter()
+                .zip(paths_clone.par_iter())
+                .for_each(|(num, path)| {
+                    if let Ok(pulse) = LoadBi(path) {
+                        let filtered_pulse = filtfilt(&pulse.to_vec(), bessel_clone.clone());
+                        if let Ok((pi, _, _)) = GetPulseInfo(&PRConfig,&PAConfig,Array1::from(filtered_pulse)) {
+                            let mut map = pulse_infos_clone.lock().unwrap();
+                            map.insert(*num as u32, pi);
+                        }
+                    }
+                    done_clone.fetch_add(1, Ordering::SeqCst);
+                });
+        });
+
+        // メインスレッドで進捗を監視してprogress_callbackを呼ぶ
+        while done.load(Ordering::SeqCst) < total as usize {
+            let current = done.load(Ordering::SeqCst) as u32;
+            let percent = (current * 100) / total;
+            progress_callback(percent);
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
 
-        let PulseInfos = Arc::try_unwrap(PulseInfosMutex)
-            .expect("Arc still has multiple owners")
+        // 最後に必ず100%を通知
+        progress_callback(100);
+
+        // 並列処理スレッドの終了を待つ
+        handle.join().map_err(|_| "Join thread failed".to_string())?;
+
+        // PulseInfos を取り出し
+        let pulse_infos = Arc::try_unwrap(pulse_infos_mutex)
+            .map_err(|_| "Arc still has multiple owners".to_string())?
             .into_inner()
-            .unwrap();
+            .map_err(|e| format!("Mutex poisoned: {}", e))?;
 
-        self.PulseInfosCH.insert(*Channel, PulseInfos);
-
+        self.PulseInfosCH.insert(*Channel, pulse_infos);
         Ok(())
     }
-    
-    
+
     pub fn AnalyzePulseFolder<
         F: FnMut(u32, u32, u32),
         G: FnMut(u32, u32),

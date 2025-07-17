@@ -1,11 +1,25 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { TESAData } from "@/TESGraph/TESAGraph.tsx";
+
+type PulseInfo = {
+    Base: number;
+    PeakAverage: number;
+    PeakIndex: number;
+    RiseTime: number;
+    DecayTime: number;
+};
+
+// チャンネル番号 → index番号 → PulseInfo
+type PulseData = {
+    [ch: string]: {
+        [index: string]: PulseInfo;
+    };
+};
 
 const PulseGraph = ({ tabId }: { tabId: string }) => {
     const [isLoading, setIsLoading] = useState(true);
-    const [pulseData, setPulseData] = useState<TESAData | null>(null);
+    const [pulseData, setPulseData] = useState<PulseData | null>(null);
 
     // 詳細進捗
     const [progress, setProgress] = useState<number>(0);
@@ -41,6 +55,7 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
             }>("pulse-channel-done", (event) => {
                 setChannelsDone(event.payload.done);
                 setTotalChannels(event.payload.total);
+                console.log("Total:"+ event.payload.total + " Done:" + event.payload.done + " Channel:" + event.payload.channel);
             });
 
             try {
@@ -49,8 +64,8 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                 console.log("解析完了");
 
                 // 終了後、最終データ取得
-                const res = await invoke<TESAData>("GetPulseInfoCommand", { tabName: tabId });
-                //setPulseData(res);
+                const res = await invoke<PulseData>("GetPulseInfoCommand", { tabName: tabId });
+                setPulseData(res);
             } catch (e) {
                 alert("フォルダ解析エラー\n"+e);
             } finally {

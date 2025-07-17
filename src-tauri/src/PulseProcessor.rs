@@ -365,8 +365,7 @@ impl PulseProcessorS {
         mut OnPulseProgress: G,
     ) -> Result<(), String> {
         
-        let Total=self.Channels.len() as u32;
-        let mut Done:u32=0;
+
         
         let JsonPath = self.DP.DataPath.join("PulseConfig.json");
 
@@ -418,6 +417,10 @@ impl PulseProcessorS {
             })
             .collect();
 
+        let Total=self.Channels.len() as u32;
+        println!("Total: {}", self.Channels.len());
+        let mut Done:u32=0;
+
         if self.Channels.is_empty() {
             return Err("Pulse has no channels.".to_string());
         }
@@ -443,19 +446,26 @@ impl PulseProcessorS {
             }
         }
 
-        for (ch, exist) in InfoCSVExist.iter() {
+        let mut keys: Vec<u32> = InfoCSVExist.keys().cloned().collect();
+        keys.sort();
+
+        OnChannelDone(Done, Total, keys[0]);
+
+        for ch in keys {
+            let exist = InfoCSVExist.get(&ch).unwrap(); // 値を取得
             let mut inner_progress = |progress_percent: u32| {
-                OnPulseProgress(progress_percent, *ch);
+                OnPulseProgress(progress_percent, ch);
             };
             if *exist && !ConfigChanged {
                 println!("continue: {}", ch);
-                continue;
             }
-            self.AnalyzePulse(ch, &mut inner_progress)?;
-            self.SavePulseInfos(ch)?;
-            print!("Analyzed CH{}.\n", ch);
-            Done+=1;
-            OnChannelDone(Done,Total,*ch);
+            else{
+                self.AnalyzePulse(&ch, &mut inner_progress)?;
+                self.SavePulseInfos(&ch)?;
+                print!("Analyzed CH{}.\n", ch);
+            }
+            Done += 1;
+            OnChannelDone(Done, Total, ch);
         }
 
         let JsonFilePre = File::create(&JsonPathPre)

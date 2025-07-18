@@ -17,8 +17,11 @@ type PulseData = {
     };
 };
 
+type ScreenStatus="Loading" | "Ready" |"Analyzing" | "Finished";
+
 const PulseGraph = ({ tabId }: { tabId: string }) => {
-    const [isLoading, setIsLoading] = useState(true);
+    const [status, setStatus] = useState<ScreenStatus>("Loading");
+    const [isAllChannelAnalyzed, setIsAllChannelAnalyzed] = useState(false);
     const [pulseData, setPulseData] = useState<PulseData | null>(null);
 
     // 詳細進捗
@@ -29,62 +32,83 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
     const [currentChannel, setCurrentChannel] = useState<number | null>(null);
 
     useEffect(() => {
+        setStatus("Loading");
+        const startAnalysis = async () => {
+
+            // Rustのコマンドを呼び出し（解析スタート）
+            invoke<String>("AnalyzePulseFolderPreCommand", { tabName: tabId })
+                .then(async (res) => {
+                    if (res==="Perfect"){
+                        setIsAllChannelAnalyzed(true);
+                    }else{
+                        setIsAllChannelAnalyzed(false);
+                    }
+                })
+                .catch(e => alert("フォルダ解析エラー\n"+e)
+                );
+            console.log("解析完了");
+        };
+        startAnalysis();
+        setStatus("Ready");
+    }, [tabId]);
+
+    const startAnalzeFolder = async () => {
+        setStatus("Analyzing");
+
+        setProgress(0);
+        setChannelsDone(0);
+        setTotalChannels(0);
+        setCurrentChannel(null);
+
         let unlistenProgress: (() => void) | null = null;
         let unlistenChannelDone: (() => void) | null = null;
 
-        const startAnalysis = async () => {
-            setIsLoading(true);
-            setProgress(0);
-            setChannelsDone(0);
-            setTotalChannels(0);
-            setCurrentChannel(null);
+        // Rust側から送られてくる進捗イベントをlisten
+        unlistenProgress = await listen<{
+            progress: number;
+            channel: number;
+        }>("pulse-progress", (event) => {
+            setProgress(event.payload.progress);
+            setCurrentChannel(event.payload.channel);
+        });
 
-            // Rust側から送られてくる進捗イベントをlisten
-            unlistenProgress = await listen<{
-                progress: number;
-                channel: number;
-            }>("pulse-progress", (event) => {
-                setProgress(event.payload.progress);
-                setCurrentChannel(event.payload.channel);
-            });
+        unlistenChannelDone = await listen<{
+            done: number;
+            total: number;
+            channel: number;
+        }>("pulse-channel-done", (event) => {
+            setChannelsDone(event.payload.done);
+            setTotalChannels(event.payload.total);
+        });
 
-            unlistenChannelDone = await listen<{
-                done: number;
-                total: number;
-                channel: number;
-            }>("pulse-channel-done", (event) => {
-                setChannelsDone(event.payload.done);
-                setTotalChannels(event.payload.total);
-                console.log("Total:"+ event.payload.total + " Done:" + event.payload.done + " Channel:" + event.payload.channel);
-            });
+        invoke<PulseData>("analyze-pulse-folder", { tabName: tabId })
+            .catch(e => {
+                console.error("Pulseフォルダ解析エラー:", e);
+                alert("Pulseフォルダ解析中にエラーが発生しました。\n" + e);
+                setStatus("Ready");
+            })
 
-            try {
-                // Rustのコマンドを呼び出し（解析スタート）
-                await invoke("AnalyzePulseFolderCommand", { tabName: tabId });
-                console.log("解析完了");
-
-                // 終了後、最終データ取得
-                const res = await invoke<PulseData>("GetPulseInfoCommand", { tabName: tabId });
-                setPulseData(res);
-            } catch (e) {
-                alert("フォルダ解析エラー\n"+e);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        startAnalysis();
+        // 終了後、最終データ取得
+        const res = await invoke<PulseData>("GetPulseInfoCommand", { tabName: tabId });
+        setPulseData(res);
+        setStatus("Finished");
+        setIsAllChannelAnalyzed(true);
 
         // クリーンアップ
         return () => {
             if (unlistenProgress) unlistenProgress();
             if (unlistenChannelDone) unlistenChannelDone();
         };
-    }, [tabId]);
+    }
 
     return (
         <div className="h-full flex flex-col">
             {isLoading ? (
+                <div className="flex flex-1 flex-col items-center justify-center text-black text-xl">
+                    <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mb-4"></div>
+                    Loading...
+                </div>
+            ) : isAnalyzing ? (
                 <div className="flex flex-1 flex-col items-center justify-center text-black text-xl space-y-4">
                     <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
                     <div>現在処理中のチャネル: {currentChannel ?? "-"}</div>
@@ -110,6 +134,7 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
             )}
         </div>
     );
+
 };
 
 export default PulseGraph;

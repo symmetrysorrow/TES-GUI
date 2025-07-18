@@ -27,7 +27,7 @@ const RTGraph = ({ tabId }: { tabId: string }) => {
                         setRTData(res);
                         setIsLoading(false);
                     })
-                    .catch((e) => console.error(e));
+                    .catch((e) => alert(e));
             })
     }, [tabId]);
 

@@ -181,6 +181,7 @@ pub struct PulseProcessorS {
     pub(crate) PAConfig: PulseAnalysisConfig,
     pub Channels: HashSet<u32>,
     pub PulseInfosCH: HashMap<u32, HashMap<u32, PulseInfoS>>,
+    InfoCSVExist: HashMap<u32, bool>,
     pub BesselCoeffs: Vec<Vec<f64>>,
 }
 
@@ -192,6 +193,7 @@ impl PulseProcessorS {
             PAConfig: PulseAnalysisConfig::new(),
             Channels: HashSet::new(),
             PulseInfosCH: HashMap::new(),
+            InfoCSVExist: HashMap::new(),
             BesselCoeffs: Vec::new(),
         }
     }
@@ -364,29 +366,6 @@ impl PulseProcessorS {
         mut OnChannelDone: F,
         mut OnPulseProgress: G,
     ) -> Result<(), String> {
-        
-
-        
-        let JsonPath = self.DP.DataPath.join("PulseConfig.json");
-
-        if !JsonPath.exists() {
-            let JsonPathDefault = PathBuf::from("./Config/PulseConfig.json");
-            if JsonPathDefault.exists() {
-                std::fs::copy(&JsonPathDefault, &JsonPath).map_err(|e| {
-                    format!("Failed to copy.{}\n{}", JsonPathDefault.display(), e).to_string()
-                })?;
-            } else {
-                return Err(format!("Failed to find {}.\n", JsonPathDefault.display()).to_string());
-            }
-        }
-
-        let JsonFile =
-            File::open(&JsonPath).map_err(|e| format!("Failed to open {:?}\n{}", JsonPath, e))?;
-
-        let PPC: PulseProcessorConfig = serde_json::from_reader(JsonFile)
-            .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPath, e))?;
-        self.PRConfig = PPC.Readout;
-        self.PAConfig = PPC.Analysis;
 
         let mut ConfigChanged = false;
 
@@ -402,57 +381,21 @@ impl PulseProcessorS {
             }
         }
 
-        let ChannelPattern = format!("{}/CH*_pulse", self.DP.DataPath.display());
-
-        self.Channels = glob(&ChannelPattern)
-            .expect("Failed to read glob pattern")
-            .filter_map(Result::ok) // PathBuf の結果を取り出す
-            .filter(|path| path.is_dir()) // ディレクトリのみフィルタ
-            .filter_map(|path| {
-                path.file_name()
-                    .and_then(|name| name.to_str()) // OsStr を &str に変換
-                    .and_then(|name| name.strip_prefix("CH")) // "CH" を削除
-                    .and_then(|name| name.strip_suffix("_pulse")) // "_pulse" を削除
-                    .and_then(|name| name.parse::<u32>().ok()) // 数値としてパース
-            })
-            .collect();
-
         let Total=self.Channels.len() as u32;
         println!("Total: {}", self.Channels.len());
         let mut Done:u32=0;
-
-        if self.Channels.is_empty() {
-            return Err("Pulse has no channels.".to_string());
-        }
 
         if cfg!(debug_assertions) {
             println!("Channels: {:?}", self.Channels);
         }
 
-        let Channels = self.Channels.clone();
-        let mut InfoCSVExist: HashMap<u32, bool> = HashMap::new();
-
-        for ch in Channels.iter() {
-            let info_path = self
-                .DP
-                .DataPath
-                .join(format!("CH{}_pulse", ch))
-                .join("Info.csv");
-            if info_path.exists() {
-                self.LoadPulseInfos(&ch)?;
-                InfoCSVExist.insert(*ch, true);
-            } else {
-                InfoCSVExist.insert(*ch, false);
-            }
-        }
-
-        let mut keys: Vec<u32> = InfoCSVExist.keys().cloned().collect();
+        let mut keys: Vec<u32> = self.InfoCSVExist.keys().cloned().collect();
         keys.sort();
 
         OnChannelDone(Done, Total, keys[0]);
 
         for ch in keys {
-            let exist = InfoCSVExist.get(&ch).unwrap(); // 値を取得
+            let exist = self.InfoCSVExist.get(&ch).unwrap(); // 値を取得
             let mut inner_progress = |progress_percent: u32| {
                 OnPulseProgress(progress_percent, ch);
             };
@@ -480,5 +423,71 @@ impl PulseProcessorS {
             .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
 
         Ok(())
+    }
+
+    pub fn AnalyzePulseFolderPre(&mut self)->Result<String,String>{
+        let JsonPath = self.DP.DataPath.join("PulseConfig.json");
+
+        if !JsonPath.exists() {
+            let JsonPathDefault = PathBuf::from("./Config/PulseConfig.json");
+            if JsonPathDefault.exists() {
+                std::fs::copy(&JsonPathDefault, &JsonPath).map_err(|e| {
+                    format!("Failed to copy.{}\n{}", JsonPathDefault.display(), e).to_string()
+                })?;
+            } else {
+                return Err(format!("Failed to find {}.\n", JsonPathDefault.display()).to_string());
+            }
+        }
+
+        let JsonFile =
+            File::open(&JsonPath).map_err(|e| format!("Failed to open {:?}\n{}", JsonPath, e))?;
+
+        let PPC: PulseProcessorConfig = serde_json::from_reader(JsonFile)
+            .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPath, e))?;
+        self.PRConfig = PPC.Readout;
+        self.PAConfig = PPC.Analysis;
+
+        let ChannelPattern = format!("{}/CH*_pulse", self.DP.DataPath.display());
+
+        self.Channels = glob(&ChannelPattern)
+            .expect("Failed to read glob pattern")
+            .filter_map(Result::ok) // PathBuf の結果を取り出す
+            .filter(|path| path.is_dir()) // ディレクトリのみフィルタ
+            .filter_map(|path| {
+                path.file_name()
+                    .and_then(|name| name.to_str()) // OsStr を &str に変換
+                    .and_then(|name| name.strip_prefix("CH")) // "CH" を削除
+                    .and_then(|name| name.strip_suffix("_pulse")) // "_pulse" を削除
+                    .and_then(|name| name.parse::<u32>().ok()) // 数値としてパース
+            })
+            .collect();
+
+        if self.Channels.is_empty() {
+            return Err("Pulse has no channels.".to_string());
+        }
+
+        let Channels = self.Channels.clone();
+
+        let mut AllExist=true;
+
+        for ch in Channels.iter() {
+            let info_path = self
+                .DP
+                .DataPath
+                .join(format!("CH{}_pulse", ch))
+                .join("Info.csv");
+            if info_path.exists() {
+                self.LoadPulseInfos(&ch)?;
+                self.InfoCSVExist.insert(*ch, true);
+            } else {
+                self.InfoCSVExist.insert(*ch, false);
+                AllExist=false;
+            }
+        }
+        if !AllExist{
+            return Ok("Lacking".to_string());
+        }
+
+        return Ok("Perfect".to_string());
     }
 }

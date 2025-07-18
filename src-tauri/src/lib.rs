@@ -1,7 +1,7 @@
 #![allow(nonstandard_style)]
 
 use crate::TabManager::{CalibrateMultipleJumpCommand, CalibrateSingleJumpCommand, FindFolderType, FitRTCommand, GetIVCommand, GetIVIndexInfoCommand, GetPulseAnalysisCommand, GetPulseInfoCommand, GetRTCommand, IVDecrementCommand, IVIncrementCommand, RegisterProcessor, SaveCalibratedCommand, SetDataPathCommand, UnregisterProcessor};
-use crate::TabManager::{AnalyzeRTFolderCommand,AnalyzeIVFolderCommand, AnalyzePulseFolderCommand};
+use crate::TabManager::{AnalyzeRTFolderCommand,AnalyzeIVFolderCommand, AnalyzePulseFolderPreCommand,AnalyzePulseFolderCommand};
 pub mod Config;
 pub mod DataProcessor;
 pub mod PulseProcessor;
@@ -37,6 +37,7 @@ pub fn run() {
             AnalyzeRTFolderCommand,
             FitRTCommand,
             GetRTCommand,
+                AnalyzePulseFolderPreCommand,
             AnalyzePulseFolderCommand,
             GetPulseInfoCommand,
             GetPulseAnalysisCommand,

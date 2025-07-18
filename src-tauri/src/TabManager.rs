@@ -360,6 +360,20 @@ pub fn GetRTCommand(TabName: String) -> Result<serde_json::Value, String> {
 }
 
 #[tauri::command]
+pub async fn AnalyzePulseFolderPreCommand(tabName: String) -> Result<String, String> {
+    let result = tokio::task::spawn_blocking(move || {
+        let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;
+        match map.get_mut(&tabName) {
+            Some(TabProcessor::Pulse(p)) => p.AnalyzePulseFolderPre(),
+            _ => Err("Tab is not an Pulse Processor".to_string()),
+        }
+    })
+        .await
+        .map_err(|e| format!("Join error: {}", e))?;  // 二重Resultのflatten
+    result
+}
+
+#[tauri::command]
 pub async fn AnalyzePulseFolderCommand(window: tauri::Window, tab_name: String) -> Result<(), String> {
     let result = tokio::task::spawn_blocking(move || {
         let mut map = PROCESSORS.lock().map_err(|_| "Failed to lock processor map")?;

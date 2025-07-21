@@ -4,38 +4,31 @@ use std::cmp::max;
 use crate::Config::{PulseAnalysisConfig, PulseProcessorConfig, PulseReadoutConfig};
 use crate::DataProcessor::{DataProcessorS, LoadBi};
 use crate::PyMod::BesselCoefficients;
-use biquad::{Biquad, Coefficients, DirectForm2Transposed};
 use glob::glob;
 use ndarray::{s, Array1};
 use regex::Regex;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use std::fmt::format;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use rayon::prelude::*;
 use std::sync::{Mutex, atomic::{AtomicUsize, Ordering}, Arc};
+use biquad::{Biquad, Coefficients, DirectForm1};
 
-fn ApplyFilter(coefficients: Coefficients<f64>, signal: &Vec<f64>) -> Vec<f64> {
-    let mut filter = DirectForm2Transposed::<f64>::new(coefficients);
-    signal.iter().map(|&x| filter.run(x)).collect()
-}
+pub fn filtfilt(b:&Vec<f64>,a:&Vec<f64>,pulse:&Array1<f64>)->Result<Vec<f64>,String>{
+    let coeffs = Coefficients::<f64> { b0:b[0], b1:b[1], b2:b[2], a1:a[1], a2:a[2] };
+    // 正方向フィルタ
+    let mut filter_fwd = DirectForm1::<f64>::new(coeffs);
+    let filtered_fwd: Vec<f64> = pulse.iter().map(|&x| filter_fwd.run(x)).collect();
+    // 逆方向フィルタ
+    let mut filter_bwd = DirectForm1::<f64>::new(coeffs);
+    let mut reversed = filtered_fwd.clone();
+    reversed.reverse();
+    let mut filtered_bwd: Vec<f64> = reversed.iter().map(|&x| filter_bwd.run(x)).collect();
+    filtered_bwd.reverse(); // 元の向きに戻す
 
-pub fn filtfilt(signal: &Vec<f64>, Coefficients: Vec<Vec<f64>>) -> Vec<f64> {
-    let coeffs = Coefficients::<f64> {
-        b0: Coefficients[0][0],
-        b1: Coefficients[0][1],
-        b2: Coefficients[0][2],
-        a1: Coefficients[1][1],
-        a2: Coefficients[1][2],
-    };
-
-    let mut filtered = ApplyFilter(coeffs, signal);
-    filtered.reverse();
-    filtered = ApplyFilter(coeffs, &filtered);
-    filtered.reverse();
-    return filtered;
+    return Ok(filtered_bwd);
 }
 
 pub fn GetPulseInfo(
@@ -56,19 +49,35 @@ pub fn GetPulseInfo(
         .mean()
         .ok_or("Failed to calculate mean of ndarray when calculate base")?;
     Pulse -= PI.Base;
-    
+
     PIH.Peak = Pulse
         .slice(s![PRConfig.PreSample as usize..PAH.PeakSearch as usize])
         .iter()
         .cloned()
         .fold(f64::NEG_INFINITY, f64::max);
-    PI.PeakIndex = Pulse
-        .slice(s![PRConfig.PreSample as usize..PAH.PeakSearch as usize])
+    // slice をとる
+    let PeakSearchSlice = Pulse.slice(s![PRConfig.PreSample as usize..PAH.PeakSearch as usize]);
+
+    // NaN が含まれていないかチェック
+    if PeakSearchSlice.iter().any(|v| v.is_nan()) {
+        println!("Pulse:{}",Pulse);
+        println!("Slice:{}",PeakSearchSlice);
+
+        return Err(format!(
+            "PeakIndex 計算中に NaN が検出されました (PreSample={}..PeakSearch={})",
+            PRConfig.PreSample, PAH.PeakSearch
+        ));
+    }
+
+    // 最大値のインデックスを取得（スライス内）
+    let PeakIndexInSlice = PeakSearchSlice
         .iter()
         .enumerate()
         .max_by(|(_, x), (_, y)| x.partial_cmp(y).unwrap())
-        .map(|(i, _)| i + PRConfig.PreSample as usize)
-        .unwrap() as u32; // スライス内のインデックスを元のインデックスに補正
+        .ok_or_else(|| "PeakIndex を取得できませんでした: スライスが空か全要素が比較不能".to_string())?;
+
+    // スライスの開始位置を補正して元のインデックスに戻す
+    PI.PeakIndex = (PeakIndexInSlice.0 + PRConfig.PreSample as usize) as u32;
     PAH.PeakAverageStart = PI.PeakIndex - PAConfig.PeakAveragePreSample;
     PAH.PeakAverageEnd = PI.PeakIndex + PAConfig.PeakAveragePostSample;
     PI.PeakAverage = Pulse
@@ -233,6 +242,25 @@ impl PulseProcessorS {
         return Ok(());
     }
 
+    pub fn SaveConfig(&mut self,new_config: serde_json::Value) -> Result<(), String> {
+        let JsonPath = self.DP.DataPath.join("PulseConfig.json");
+
+        // JSONをきれいに整形して文字列に変換
+        let json_str = serde_json::to_string_pretty(&new_config)
+            .map_err(|e| format!("Failed to serialize config: {}", e))?;
+
+        // ファイルに書き込む
+        std::fs::write(JsonPath, json_str)
+            .map_err(|e| format!("Failed to write config file: {}", e))?;
+
+        let PPC: PulseProcessorConfig = serde_json::from_value(new_config)
+            .map_err(|e| format!("Failed to parse \n{}",  e))?;
+        self.PRConfig = PPC.Readout;
+        self.PAConfig = PPC.Analysis;
+
+        Ok(())
+    }
+
     pub fn LoadPulseInfos(&mut self, Channel: &u32) -> Result<(), String> {
         let InfoPath = self
             .DP
@@ -318,7 +346,7 @@ impl PulseProcessorS {
                 .zip(paths_clone.par_iter())
                 .for_each(|(num, path)| {
                     if let Ok(pulse) = LoadBi(path) {
-                        let filtered_pulse = filtfilt(&pulse.to_vec(), bessel_clone.clone());
+                        let filtered_pulse = filtfilt(&bessel_clone[0],&bessel_clone[1],&pulse).map_err(|e| format!("Filter error: {}", e)).unwrap();
                         if let Ok((pi, _, _)) = GetPulseInfo(&PRConfig,&PAConfig,Array1::from(filtered_pulse)) {
                             let mut map = pulse_infos_clone.lock().unwrap();
                             map.insert(*num as u32, pi);
@@ -349,6 +377,13 @@ impl PulseProcessorS {
             .map_err(|e| format!("Mutex poisoned: {}", e))?;
 
         self.PulseInfosCH.insert(*Channel, pulse_infos);
+        Ok(())
+    }
+
+    pub fn ResetPreResult(&mut self)-> Result<(), String> {
+        for ch in self.Channels.iter() {
+            self.InfoCSVExist.insert(*ch, false);
+        }
         Ok(())
     }
 
@@ -420,8 +455,6 @@ impl PulseProcessorS {
     }
 
     pub fn AnalyzePulseFolderPre(&mut self)->Result<String,String>{
-
-
         let JsonPath = self.DP.DataPath.join("PulseConfig.json");
 
         if !JsonPath.exists() {

@@ -1,7 +1,7 @@
 #![allow(non_upper_case_globals)]
 
 use crate::Config::TESAnalysisConfig;
-use crate::DataProcessor::{DataProcessorS, DataProcessorT};
+use crate::DataProcessor::{DataProcessorS};
 use crate::DataProcessor::{LoadTxt, SaveTxt};
 use crate::PyMod::RTFit;
 use crate::TESAnalyzer::LinerFit;

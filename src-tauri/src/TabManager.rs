@@ -9,6 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 use tauri::Emitter;
+use crate::PulseProcessor;
 
 pub enum TabProcessor {
     IV(IVProcessorS),
@@ -454,11 +455,12 @@ pub fn GetPulseAnalysisCommand(
             let Time:Vec<f64>=(0..p.PRConfig.Sample as usize).map(|n|n as f64/p.PRConfig.Rate).collect();
 
             let mut Pulse = LoadBi(Path::new(&path))?;
-            let FilteredPulse =
-                crate::PulseProcessor::filtfilt(&Pulse.to_vec(), p.BesselCoeffs.clone());
+
+            let FilteredPulse =PulseProcessor::filtfilt(&p.BesselCoeffs[0],&p.BesselCoeffs[0],&Pulse).map_err(|e| format!("Filter error: {}", e))?;
             let (PI, PIH, PAH) = crate::PulseProcessor::GetPulseInfo(&PRConfig, &PAConfig,Array1::from( FilteredPulse.clone()))?;
 
             Pulse-=PI.Base;
+            let FilteredPulseArray1=Array1::from(FilteredPulse)-PI.Base;
 
             result.insert(
                 "Time".to_string(),
@@ -472,7 +474,7 @@ pub fn GetPulseAnalysisCommand(
             );
             result.insert(
                 "FilteredPulse".to_string(),
-                serde_json::to_value(FilteredPulse).map_err(|e| e.to_string())?,
+                serde_json::to_value(FilteredPulseArray1.to_vec()).map_err(|e| e.to_string())?,
             );
 
             // PI, PIH, PAH は Serialize を derive している前提
@@ -504,7 +506,7 @@ pub fn GetPulseAnalysisCommand(
             ));
 
             // ファイルに書き込む
-            std::fs::write(&json_path, json_string)
+            fs::write(&json_path, json_string)
                 .map_err(|e| format!("Failed to write JSON file: {}", e))?;
 
             Ok(serde_json::Value::Object(result))
@@ -518,6 +520,43 @@ pub fn SaveFigCommand(TabName: String, path: String) -> Result<(), String> {
     match map.get(&TabName) {
         Some(TabProcessor::IV(p)) => {
             p.SaveFig(&path)?;
+            Ok(())
+        }
+        _ => Err("Invalid tab or processor type".into()),
+    }
+}
+#[tauri::command]
+pub fn SaveConfigCommand(TabName:String,json:serde_json::Value) -> Result<(), String> {
+    let mut map = PROCESSORS.lock().unwrap();
+    match map.get_mut(&TabName) {
+        Some(TabProcessor::Pulse(p)) => {
+            p.SaveConfig(json)?;
+            Ok(())
+        }
+        _ => Err("Invalid tab or processor type".into()),
+    }
+}
+#[tauri::command]
+pub fn GetConfigCommand(TabName:String)-> Result<serde_json::Value, String> {
+    let map = PROCESSORS.lock().unwrap();
+    match map.get(&TabName) {
+        Some(TabProcessor::Pulse(p)) => {
+            let json_value = serde_json::json!({
+            "Readout": p.PRConfig,
+            "Analysis": p.PAConfig
+        });
+            Ok(json_value)
+        }
+        _=> Err("Invalid tab or processor type".into()),
+    }
+}
+
+#[tauri::command]
+pub fn ResetPreResultCommand(TabName:String) -> Result<(), String> {
+    let mut map = PROCESSORS.lock().unwrap();
+    match map.get_mut(&TabName) {
+        Some(TabProcessor::Pulse(p)) => {
+            p.ResetPreResult()?;
             Ok(())
         }
         _ => Err("Invalid tab or processor type".into()),

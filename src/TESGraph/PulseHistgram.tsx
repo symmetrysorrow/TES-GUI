@@ -131,7 +131,7 @@ export function PulseHistogram({ data, binNum: initialBinNum, xaxis, yaxis }: Hi
 
     return (
         <SidebarProvider>
-            <div className="flex h-full">
+            <div className="flex h-full w-full">
                 {/* サイドバー */}
                 <HistogramSidebar
                     titles={titles}

@@ -118,7 +118,7 @@ export function Pulse2D({ xdata,ydata, xaxis, yaxis }: Pulse2DProps) {
 
     return (
         <SidebarProvider>
-            <div className="flex h-full">
+            <div className="flex h-full w-full">
                 {/* サイドバー */}
                 <Pulse2DSidebar
                     titles={titles}

@@ -5,6 +5,8 @@ import { PulseHistogram } from "@/TESGraph/PulseHistgram";
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover.tsx";
 import Pulse2DGraph from "@/TESGraph/Pulse2DGraph.tsx";
 import PulsePulse from "@/TESGraph/PulsePulseGraph.tsx";
+import ConfigPopover from "@/TESAnalyzer/PulseConfig.tsx";
+import {Button} from "@headlessui/react";
 
 // 型定義はそのままでOK
 type PulseInfo = { Base: number; PeakAverage: number; PeakIndex: number; RiseTime: number; DecayTime: number; };
@@ -58,6 +60,19 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
         init();
     }, [tabId]);
 
+    const resetPreresult = async () => {
+        try {
+            await invoke("ResetPreResultCommand", { tabName: tabId });
+            setPulseData(null);
+            setActiveTab(null);
+            setSettings({});
+            await startAnalyzeFolder();
+        } catch (e) {
+            console.error(e);
+            alert("リセットエラー\n" + e);
+        }
+    }
+
     // 解析開始
     const startAnalyzeFolder = async () => {
         setStatus("Analyzing");
@@ -97,8 +112,15 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
             {status === "Finished" && (
                 <>
                     {/* タブ（Popover付き） */}
-                    <div className="flex border-b justify-center ">
-                        {tabs.map(tab => {
+                    <div className="flex border-b justify-center relative">
+                        <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
+                            <Button onClick={resetPreresult}>
+                                再計算
+                            </Button>
+                        </div>
+                        {/* タブグループ（中央寄せ） */}
+                        <div className="flex space-x-2">
+                            {tabs.map(tab => {
                             const isActive = activeTab === tab.key;
                             return (
                                 <Popover key={tab.key}>
@@ -339,10 +361,14 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                                 </Popover>
                             );
                         })}
+                        </div>
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                            <ConfigPopover tabId={tabId} />
+                        </div>
                     </div>
 
                     {/* パネル */}
-                    <div className="flex-1 relative overflow-auto">
+                    <div className="flex-1 relative overflow-auto" id={"Panel"}>
                         {activeTab === "histogram" && settings.histogram && (
                             <PulseHistogram
                                 data={Object.values(pulseData?.[settings.histogram.channel] ?? {}).map(

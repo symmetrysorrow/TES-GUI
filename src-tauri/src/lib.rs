@@ -2,6 +2,7 @@
 
 use crate::TabManager::{CalibrateMultipleJumpCommand, CalibrateSingleJumpCommand, FindFolderType, FitRTCommand, GetIVCommand, GetIVIndexInfoCommand, GetPulseAnalysisCommand, GetPulseInfoCommand, GetRTCommand, IVDecrementCommand, IVIncrementCommand, RegisterProcessor, SaveCalibratedCommand, SetDataPathCommand, UnregisterProcessor};
 use crate::TabManager::{AnalyzeRTFolderCommand,AnalyzeIVFolderCommand, AnalyzePulseFolderPreCommand,AnalyzePulseFolderCommand};
+use crate::TabManager::{GetConfigCommand,SaveConfigCommand,ResetPreResultCommand};
 pub mod Config;
 pub mod DataProcessor;
 pub mod PulseProcessor;
@@ -42,6 +43,9 @@ pub fn run() {
             GetPulseInfoCommand,
             GetPulseAnalysisCommand,
             FindFolderType,
+                SaveConfigCommand,
+                GetConfigCommand,
+            ResetPreResultCommand
         ])
         // 実行
         .run(tauri::generate_context!())

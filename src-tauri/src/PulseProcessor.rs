@@ -10,6 +10,7 @@ use ndarray::{s, Array1};
 use regex::Regex;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
+use std::fmt::format;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -55,7 +56,7 @@ pub fn GetPulseInfo(
         .mean()
         .ok_or("Failed to calculate mean of ndarray when calculate base")?;
     Pulse -= PI.Base;
-
+    
     PIH.Peak = Pulse
         .slice(s![PRConfig.PreSample as usize..PAH.PeakSearch as usize])
         .iter()
@@ -114,7 +115,7 @@ pub fn GetPulseInfo(
 #[derive(Serialize)]
 #[derive(Debug)]
 pub struct PulseInfoS {
-    Base: f64,
+    pub(crate) Base: f64,
     PeakAverage: f64,
     PeakIndex: u32,
     RiseTime: f64,
@@ -301,13 +302,6 @@ impl PulseProcessorS {
             })
             .collect();
 
-        // Besselフィルタ係数の計算（同期）
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.BesselCoeffs = rt.block_on(BesselCoefficients(
-            self.PRConfig.Rate,
-            self.PAConfig.CutoffFrequency,
-        ))?;
-
         let pulse_infos_mutex = Arc::new(Mutex::new(HashMap::new()));
         let done_clone = Arc::clone(&done);
 
@@ -426,6 +420,8 @@ impl PulseProcessorS {
     }
 
     pub fn AnalyzePulseFolderPre(&mut self)->Result<String,String>{
+
+
         let JsonPath = self.DP.DataPath.join("PulseConfig.json");
 
         if !JsonPath.exists() {
@@ -446,6 +442,13 @@ impl PulseProcessorS {
             .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPath, e))?;
         self.PRConfig = PPC.Readout;
         self.PAConfig = PPC.Analysis;
+
+        // Besselフィルタ係数の計算（同期）
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        self.BesselCoeffs = rt.block_on(BesselCoefficients(
+            self.PRConfig.Rate,
+            self.PAConfig.CutoffFrequency,
+        ))?;
 
         let ChannelPattern = format!("{}/CH*_pulse", self.DP.DataPath.display());
 

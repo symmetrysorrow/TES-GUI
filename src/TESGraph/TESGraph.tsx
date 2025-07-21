@@ -11,6 +11,7 @@ export type TESGraphProps = {
     onSelected?: (event: any) => void;
     onClick?: (event: any) => void;
     onRelayout?: (event: any) => void;
+    forceRedraw?: () => void;
 };
 
 export type ExportImageOptions = {
@@ -22,6 +23,7 @@ export type ExportImageOptions = {
 
 export interface TESGraphRef {
     exportImage: (opts: ExportImageOptions) => Promise<string>;
+    forceRedraw: () => void;
 }
 
 const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
@@ -65,6 +67,13 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
 
                 return dataUri;
             },
+            forceRedraw: () => {
+                if (plotRef.current) {
+                    console.log("forceRedraw called from parent");
+                    window.Plotly.Plots.resize(plotRef.current);
+                    window.Plotly.redraw(plotRef.current);
+                }
+            }
         }));
 
         // useEffectでイベント登録・解除
@@ -128,7 +137,6 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
                 }
             };
 
-
             const handleMouseUp = () => {
                 dragging = false;
             };
@@ -149,6 +157,17 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
                 window.removeEventListener("mouseup", handleMouseUp);
             };
         }, [data, layout, shapes]); // dataやlayoutが変わったら再登録される
+
+        useEffect(() => {
+            if (!plotRef.current) return;
+            const resizeObserver = new ResizeObserver(() => {
+                window.Plotly.Plots.resize(plotRef.current);
+            });
+            resizeObserver.observe(plotRef.current.parentElement); // 親要素を監視
+
+            return () => resizeObserver.disconnect();
+        }, []);
+
 
         const combinedLayout: Partial<Layout> = {
             autosize: true,

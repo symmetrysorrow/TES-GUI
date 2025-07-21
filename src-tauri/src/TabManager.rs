@@ -451,10 +451,19 @@ pub fn GetPulseAnalysisCommand(
             let PRConfig = p.PRConfig.clone();
             let PAConfig = p.PAConfig.clone();
 
-            let Pulse = LoadBi(Path::new(&path))?;
+            let Time:Vec<f64>=(0..p.PRConfig.Sample as usize).map(|n|n as f64/p.PRConfig.Rate).collect();
+
+            let mut Pulse = LoadBi(Path::new(&path))?;
             let FilteredPulse =
                 crate::PulseProcessor::filtfilt(&Pulse.to_vec(), p.BesselCoeffs.clone());
             let (PI, PIH, PAH) = crate::PulseProcessor::GetPulseInfo(&PRConfig, &PAConfig,Array1::from( FilteredPulse.clone()))?;
+
+            Pulse-=PI.Base;
+
+            result.insert(
+                "Time".to_string(),
+                serde_json::to_value(Time).map_err(|e| e.to_string())?,
+            );
 
             // Pulse と FilteredPulse を JSON に変換して挿入
             result.insert(
@@ -479,6 +488,24 @@ pub fn GetPulseAnalysisCommand(
                 "PAH".to_string(),
                 serde_json::to_value(PAH).map_err(|e| e.to_string())?,
             );
+
+            // result をファイルに書き込む
+            let json_value = serde_json::Value::Object(result.clone()); // clone は書き込む用
+            let json_string = serde_json::to_string_pretty(&json_value)
+                .map_err(|e| format!("Failed to serialize JSON: {}", e))?;
+
+            // 保存先のパスを決める（例: 同じディレクトリに CH{channel}_{key}.json で保存）
+            let json_path = PathBuf::from(format!(
+                "{}/CH{}_pulse/rawdata/CH{}_{}.json",
+                p.DP.DataPath.display(),
+                Channel,
+                Channel,
+                key
+            ));
+
+            // ファイルに書き込む
+            std::fs::write(&json_path, json_string)
+                .map_err(|e| format!("Failed to write JSON file: {}", e))?;
 
             Ok(serde_json::Value::Object(result))
         }

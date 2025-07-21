@@ -17,7 +17,7 @@ type TESASidebarProps = {
     handleSettingChange: (curveKey: string, field: keyof TESASetting, value: any) => void;
 };
 
-const markerSymbols = ["None", "circle", "square", "diamond", "cross", "x"];
+const markerSymbols = ["circle", "square", "diamond", "cross", "x"];
 
 export const TESASidebar: React.FC<TESASidebarProps> = ({
                                                         titles,
@@ -25,7 +25,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                                         setTitles,
                                                         data,
                                                         settings,
-                                                        handleSettingChange
+                                                            handleSettingChange
                                                     }) => {
     return (
         <Sidebar side="left">

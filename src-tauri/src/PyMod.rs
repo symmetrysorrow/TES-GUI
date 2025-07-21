@@ -12,10 +12,20 @@ pub async fn BesselCoefficients(rate: f64, fs: f64) -> Result<Vec<Vec<f64>>, Str
         .await
         .map_err(|e| format!("Failed to get response: {}", e))?;
 
-    let json: serde_json::Value = res
-        .json()
-        .await
-        .map_err(|e| format!("Failed to execute Python command: {}", e))?;
+    let status = res.status();
+    let text = res.text().await.map_err(|e| format!("Failed to read body: {}", e))?;
+
+    println!("Status: {}, body: {}", status, text);
+
+    // エラーハンドリング
+    if !status.is_success() {
+        return Err(format!("Request failed with status {}: {}", status, text));
+    }
+
+    // JSONパース
+    let json: serde_json::Value = serde_json::from_str(&text)
+        .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+
     let a = json["a"]
         .as_array()
         .unwrap()

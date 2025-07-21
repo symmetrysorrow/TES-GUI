@@ -7,11 +7,11 @@ import React, {
 } from "react";
 import TESGraph, { TESGraphProps, TESGraphRef } from "./TESGraph";
 import { PlotData } from "plotly.js";
-import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
-import { Printer} from "lucide-react";
+import {Tab, TabGroup, TabList, TabPanels, TabPanel} from "@headlessui/react";
+import {Menu, Printer} from "lucide-react";
 import PrintModal from "@/TESGraph/TESGraphModal.tsx";
 import {TESASidebar} from "@/TESGraph/TESASidebar.tsx";
-import {SidebarProvider, SidebarTrigger} from "@/components/ui/sidebar.tsx";
+import {SidebarProvider, useSidebar} from "@/components/ui/sidebar.tsx";
 
 
 export interface TESAData {
@@ -87,11 +87,6 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }, {} as Record<string, TESASetting>)
         );
 
-        //DEBUG
-        useEffect(() => {
-            console.log("settings:", settings);
-        }, [settings]);
-
         // 各タブのタイトル・軸ラベルをstate管理
         const [titles, setTitles] = useState(
             tabs.reduce((acc, tab) => {
@@ -123,14 +118,18 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }
         }, [data]);
 
-
         // 表示中タブのTESGraphRefを外部に公開
         useImperativeHandle(ref, () => ({
             exportImage: async (options) => {
                 const currentRef = innerGraphRefs.current[selectedTab];
                 if (!currentRef?.current) return "";
                 return await currentRef.current.exportImage(options);
-            },
+            },forceRedraw: () => {
+                const currentRef = innerGraphRefs.current[selectedTab];
+                if (currentRef?.current) {
+                    currentRef.current.forceRedraw();
+                }
+            }
         }));
 
         // プロット用データ作成関数
@@ -146,15 +145,9 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                     return {
                         x: entry[tab.xKey] ?? [],
                         y: entry[tab.yKey] ?? [],
-                        type: "scatter",
-                        mode:
-                            setting?.markerSymbol === "None"
-                                ? "lines"
-                                : setting?.mode || "lines+markers",
-                        marker:
-                            setting?.markerSymbol === "None"
-                                ? { color: setting?.color }
-                                : { color: setting?.color, symbol: setting?.markerSymbol },
+                        type: "scatter" as const,
+                        mode: setting?.mode || "lines+markers",
+                        marker:{ color: setting?.color, symbol: setting?.markerSymbol },
                         name: `${keyValue}${unitLabel}`,
                         visible: isVisible && setting?.visible ? true : "legendonly",
                     };
@@ -162,8 +155,6 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             },
             [data, settings, visibleKeys]
         );
-
-        //const title = titles[selectedTab];
 
         // 設定変更ハンドラ
         const handleSettingChange = (
@@ -180,7 +171,19 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }));
         };
 
+        function CustomSidebarTrigger(){
+
+            const { toggleSidebar } = useSidebar()
+            const handleForceRedraw = () => {
+                toggleSidebar()
+            }
+            return (
+                <Menu onClick={handleForceRedraw}/>
+            )
+        }
+
         return (
+            <SidebarProvider>
             <div className="flex w-full h-full relative">
                 <PrintModal
                     isOpen={printModalOpen}
@@ -211,6 +214,9 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                         {tab.label}
                                     </Tab>
                                 ))}
+                                <div className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800">
+                                    <CustomSidebarTrigger />
+                                </div>
                                 <button
                                     onClick={() => setPrintModalOpen(true)}
                                     className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800"
@@ -219,11 +225,11 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                 </button>
                             </TabList>
 
-                            <TabPanels id="tabPanels" className="flex-grow min-h-0 h-full">
+                            <TabPanels id="tabPanels" className="relative flex-grow min-h-0 h-full">
                                 {tabs.map((tab) => (
 
                                     <TabPanel key={tab.label} className="flex h-full overflow-hidden" unmount={false}>
-                                        <SidebarProvider>
+
                                             <TESASidebar
                                                 titles={titles}
                                                 currentTab={tab.label}
@@ -247,7 +253,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                                     />
 
                                             </div>
-                                        </SidebarProvider>
+
                                     </TabPanel>
 
                                     //</TESASidebar>
@@ -257,6 +263,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                     </TabGroup>
                 </div>
             </div>
+            </SidebarProvider>
         );
     }
 );

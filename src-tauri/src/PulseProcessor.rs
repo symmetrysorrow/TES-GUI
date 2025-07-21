@@ -396,20 +396,6 @@ impl PulseProcessorS {
         mut OnPulseProgress: G,
     ) -> Result<(), String> {
 
-        let mut ConfigChanged = false;
-
-        let JsonPathPre = self.DP.DataPath.join(".PulseConfig.json");
-
-        if JsonPathPre.exists() {
-            let JsonFilePre = File::open(&JsonPathPre)
-                .map_err(|e| format!("Failed to open {:?}\n{}", JsonPathPre, e))?;
-            let PPCPre: PulseProcessorConfig = serde_json::from_reader(JsonFilePre)
-                .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
-            if self.PRConfig != PPCPre.Readout || self.PAConfig != PPCPre.Analysis {
-                ConfigChanged = true;
-            }
-        }
-
         let Total=self.Channels.len() as u32;
         println!("Total: {}", self.Channels.len());
         let mut Done:u32=0;
@@ -428,7 +414,7 @@ impl PulseProcessorS {
             let mut inner_progress = |progress_percent: u32| {
                 OnPulseProgress(progress_percent, ch);
             };
-            if *exist && !ConfigChanged {
+            if *exist{
                 println!("continue: {}", ch);
             }
             else{
@@ -439,17 +425,6 @@ impl PulseProcessorS {
             Done += 1;
             OnChannelDone(Done, Total, ch);
         }
-
-        let JsonFilePre = File::create(&JsonPathPre)
-            .map_err(|e| format!("Failed to create {:?}\n{}", JsonPathPre, e))?;
-        serde_json::to_writer_pretty(
-            JsonFilePre,
-            &PulseProcessorConfig {
-                Readout: self.PRConfig.clone(),
-                Analysis: self.PAConfig.clone(),
-            },
-        )
-            .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPathPre, e))?;
 
         Ok(())
     }

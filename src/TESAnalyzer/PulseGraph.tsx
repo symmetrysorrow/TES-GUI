@@ -5,8 +5,10 @@ import { PulseHistogram } from "@/TESGraph/PulseHistgram";
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover.tsx";
 import Pulse2DGraph from "@/TESGraph/Pulse2DGraph.tsx";
 import PulsePulse from "@/TESGraph/PulsePulseGraph.tsx";
-import ConfigPopover from "@/TESAnalyzer/PulseConfig.tsx";
-import {Button} from "@headlessui/react";
+import PulseConfig from "@/TESAnalyzer/PulseConfig.tsx";
+import {Button} from "@/components/ui/button.tsx";
+import {RefreshCw,Settings} from "lucide-react";
+import {Progress} from "@/components/ui/progress.tsx";
 
 // 型定義はそのままでOK
 type PulseInfo = { Base: number; PeakAverage: number; PeakIndex: number; RiseTime: number; DecayTime: number; };
@@ -28,6 +30,8 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
 
     const [activeTab, setActiveTab] = useState<TabKey | null>(null);
     const [settings, setSettings] = useState<TabSettings>({});
+
+    const [pulseConfigVersion, setPulseConfigVersion] = useState(0);
 
     // pulseData がない場合は空配列
     const channels = pulseData ? Object.keys(pulseData) : [];
@@ -58,6 +62,8 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
             }
         };
         init();
+
+
     }, [tabId]);
 
     const resetPreresult = async () => {
@@ -105,19 +111,70 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
     return (
         <div className="flex flex-col h-full">
             {/* 状態表示 */}
-            {status === "Loading" && <div>Loading...</div>}
-            {status === "Ready" && <button onClick={startAnalyzeFolder}>解析開始</button>}
-            {status === "Analyzing" && <div>解析中: {progress}% | チャンネル: {channelsDone}/{totalChannels}</div>}
+            {status === "Loading" &&
+                (<div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50">
+                    <div className="flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-solid mb-4"></div>
+                        <div className="text-lg font-semibold text-gray-700">Loading...</div>
+                    </div>
+                </div>)
+            }
+            {status === "Ready" && (
+                <div className="flex flex-col md:flex-row items-center justify-center gap-6 p-6">
+                    {/* 解析開始ボタンカード */}
+                    <div className="bg-white shadow-lg rounded-xl p-6 flex flex-col items-center justify-center">
+                        <h2 className="text-lg font-semibold mb-4">解析の開始</h2>
+                        <Button
+                            onClick={startAnalyzeFolder}
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-full shadow hover:from-blue-600 hover:to-blue-700 transition"
+                        >
+                            解析開始
+                        </Button>
+                    </div>
+
+                    {/* 設定カード */}
+                    <div className="bg-white shadow-lg rounded-xl p-6 w-full max-w-md overflow-auto">
+                        <h2 className="text-lg font-semibold mb-4">解析設定</h2>
+                        <PulseConfig tabId={tabId} onConfigChange={() => setPulseConfigVersion(v => v + 1)} />
+                    </div>
+                </div>
+
+            )}
+            {status === "Analyzing" && (
+
+                <div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50">
+                    <div className="flex flex-col items-center bg-white rounded-2xl shadow-xl p-6 w-80 space-y-4">
+                        {/* ローディングスピナー */}
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-solid"></div>
+
+                        {/* タイトル */}
+                        <div className="text-xl font-semibold text-gray-800">解析中...</div>
+
+                        {/* パルス進捗 */}
+                        <div className="w-full">
+                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                <span>パルス: {progress}%</span>
+                            </div>
+                            <Progress value={progress} />
+                        </div>
+
+                        {/* チャンネル進捗 */}
+                        <div className="w-full">
+                            <div className="flex justify-between text-xs text-gray-600 mb-1">
+                                <span>チャンネル: {channelsDone}/{totalChannels}</span>
+                            </div>
+                            <Progress value={totalChannels ? (channelsDone / totalChannels) * 100 : 0} />
+                        </div>
+                    </div>
+                </div>
+
+            )}
 
             {status === "Finished" && (
                 <>
                     {/* タブ（Popover付き） */}
                     <div className="flex border-b justify-center relative">
-                        <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
-                            <Button onClick={resetPreresult}>
-                                再計算
-                            </Button>
-                        </div>
+
                         {/* タブグループ（中央寄せ） */}
                         <div className="flex space-x-2">
                             {tabs.map(tab => {
@@ -362,9 +419,28 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                             );
                         })}
                         </div>
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                            <ConfigPopover tabId={tabId} />
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <RefreshCw />
+                                </PopoverTrigger>
+                                <PopoverContent>
+                                    <div className="flex flex-col space-y-1">
+                                        <Button variant="outline" onClick={resetPreresult}>再計算</Button>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Settings />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80">
+                                    <PulseConfig tabId={tabId} onConfigChange={() => setPulseConfigVersion(v => v + 1)}/>
+                                </PopoverContent>
+                            </Popover>
+
                         </div>
+
                     </div>
 
                     {/* パネル */}
@@ -384,6 +460,7 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                                 tabId={tabId}
                                 channel={settings.pulse.channel}
                                 pulseIndex={settings.pulse.pulseIndex}
+                                pulseConfigVer={pulseConfigVersion}
                             />
                         )}
                         {activeTab === "2d" && settings.scatter2d&&(
@@ -405,5 +482,4 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
         </div>
     );
 };
-
 export default PulseGraph;

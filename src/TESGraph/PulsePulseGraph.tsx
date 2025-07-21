@@ -6,7 +6,7 @@ import {
     SidebarGroup,
     SidebarGroupContent,
     SidebarGroupLabel,
-    SidebarProvider, SidebarTrigger
+    SidebarProvider
 } from "@/components/ui/sidebar.tsx";
 import { invoke } from "@tauri-apps/api/core";
 import { PlotData } from "plotly.js";
@@ -48,9 +48,10 @@ export interface PulsePulseProps {
     tabId: string;
     channel: string;
     pulseIndex: string;
+    pulseConfigVer:number;
 }
 
-export function PulsePulse({ tabId, pulseIndex, channel }: PulsePulseProps) {
+export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer}: PulsePulseProps) {
     const [titles, setTitles] = useState({
         Pulse: { main: "Pulse Graph", xaxis: "Time", yaxis: "Amplitude" },
     });
@@ -82,7 +83,7 @@ export function PulsePulse({ tabId, pulseIndex, channel }: PulsePulseProps) {
             }
         };
         fetchData();
-    }, [channel, pulseIndex]);
+    }, [channel, pulseIndex,pulseConfigVer]);
 
     const plotData: Partial<PlotData>[] = [];
 
@@ -204,7 +205,6 @@ export function PulsePulse({ tabId, pulseIndex, channel }: PulsePulseProps) {
                 <Sidebar side="left" collapsible="none">
                     <SidebarContent>
                         <SidebarGroup>
-                            <SidebarTrigger/>
                             <SidebarGroupLabel>タイトル設定</SidebarGroupLabel>
                             <SidebarGroupContent>
                                 <label className="block text-sm">タイトル</label>

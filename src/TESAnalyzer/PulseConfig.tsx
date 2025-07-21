@@ -1,7 +1,5 @@
 import  { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import {Popover,PopoverTrigger, PopoverContent} from "@/components/ui/popover.tsx";
-import {Settings} from "lucide-react"
 
 type ConfigType = {
     Readout: {
@@ -23,9 +21,9 @@ type ConfigType = {
     };
 };
 
-type Props = { tabId: string };
+type Props = { tabId: string ,onConfigChange: () => void };
 
-export default function ConfigPopover({ tabId }: Props) {
+export default function PulseConfig({ tabId,onConfigChange }: Props) {
     const [config, setConfig] = useState<ConfigType | null>(null);
 
     // 初回ロード
@@ -52,47 +50,43 @@ export default function ConfigPopover({ tabId }: Props) {
         invoke("SaveConfigCommand", { tabName: tabId, json: updated }).catch((e) =>
             alert("設定の保存に失敗: " + e)
         );
+
+        onConfigChange();
     };
 
     return (
-        <Popover>
-            <PopoverTrigger className="px-3 py-1 border rounded bg-gray-100 hover:bg-gray-200">
-                <Settings/>
-            </PopoverTrigger>
+        <div>
+        {config ? (
+                <div className="space-y-4 max-h-96 overflow-auto">
+                    <h2 className="font-semibold">Readout 設定</h2>
+                    {Object.entries(config.Readout).map(([key, value]) => (
+                        <div key={key}>
+                            <label className="block text-xs font-medium">{key}</label>
+                            <input
+                                type="number"
+                                className="w-full border px-2 py-1 text-sm"
+                                value={value}
+                                onChange={(e) => updateField("Readout", key, Number(e.target.value))}
+                            />
+                        </div>
+                    ))}
 
-            <PopoverContent className="absolute z-10 w-80 p-4 bg-white border rounded shadow-md right-0">
-                {config ? (
-                    <div className="space-y-4 max-h-96 overflow-auto">
-                        <h2 className="font-semibold">Readout 設定</h2>
-                        {Object.entries(config.Readout).map(([key, value]) => (
-                            <div key={key}>
-                                <label className="block text-xs font-medium">{key}</label>
-                                <input
-                                    type="number"
-                                    className="w-full border px-2 py-1 text-sm"
-                                    value={value}
-                                    onChange={(e) => updateField("Readout", key, Number(e.target.value))}
-                                />
-                            </div>
-                        ))}
-
-                        <h2 className="font-semibold mt-2">Analysis 設定</h2>
-                        {Object.entries(config.Analysis).map(([key, value]) => (
-                            <div key={key}>
-                                <label className="block text-xs font-medium">{key}</label>
-                                <input
-                                    type="number"
-                                    className="w-full border px-2 py-1 text-sm"
-                                    value={value}
-                                    onChange={(e) => updateField("Analysis", key, Number(e.target.value))}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div>Loading config...</div>
-                )}
-            </PopoverContent>
-        </Popover>
+                    <h2 className="font-semibold mt-2">Analysis 設定</h2>
+                    {Object.entries(config.Analysis).map(([key, value]) => (
+                        <div key={key}>
+                            <label className="block text-xs font-medium">{key}</label>
+                            <input
+                                type="number"
+                                className="w-full border px-2 py-1 text-sm"
+                                value={value}
+                                onChange={(e) => updateField("Analysis", key, Number(e.target.value))}
+                            />
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div>Loading config...</div>
+            )}
+        </div>
     );
 }

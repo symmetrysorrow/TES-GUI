@@ -41,6 +41,7 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
     ) => {
         const plotRef = useRef<any>(null);
 
+
         // exportImage API
         useImperativeHandle(ref, () => ({
             exportImage: async ({ format, width, height, transparent }) => {
@@ -51,6 +52,8 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
                 const exportHeight = height ?? 600;
 
                 const originalBg = plotDiv.layout.paper_bgcolor;
+                console.log("layoutRange:", plotDiv.layout.xaxis.range, plotDiv.layout.yaxis.range);
+
                 if (transparent) {
                     plotDiv.layout.paper_bgcolor = "rgba(0,0,0,0)";
                 }
@@ -171,7 +174,7 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
         const combinedLayout: Partial<Layout> = {
             autosize: true,
             margin: { t: 50, l: 50, r: 20, b: 50 },
-            paper_bgcolor: "rgba(0,0,0,0)",
+            paper_bgcolor: "#fff",
             plot_bgcolor: "rgba(0,0,0,0)",
             dragmode: dragMode,
             shapes,

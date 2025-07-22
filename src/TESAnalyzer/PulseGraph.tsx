@@ -7,10 +7,10 @@ import Pulse2DGraph from "@/TESGraph/Pulse2DGraph.tsx";
 import PulsePulse from "@/TESGraph/PulsePulseGraph.tsx";
 import PulseConfig from "@/TESAnalyzer/PulseConfig.tsx";
 import {Button} from "@/components/ui/button.tsx";
-import {Printer, RefreshCw, Settings} from "lucide-react";
 import {Progress} from "@/components/ui/progress.tsx";
 import { TESGraphRef } from "@/TESGraph/TESGraph";
 import PrintModal from "@/TESGraph/TESGraphModal.tsx";
+import {RefreshCw, Settings} from "lucide-react";
 
 // 型定義はそのままでOK
 type PulseInfo = { Base: number; PeakAverage: number; PeakIndex: number; RiseTime: number; DecayTime: number; };
@@ -36,8 +36,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
     const [settings, setSettings] = useState<TabSettings>({});
 
     const [pulseConfigVersion, setPulseConfigVersion] = useState(0);
-
-    const [printModalOpen, setPrintModalOpen] = useState(false);
 
     // pulseData がない場合は空配列
     const channels = pulseData ? Object.keys(pulseData) : [];
@@ -145,11 +143,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
 
     return (
         <div className="flex flex-col h-full">
-            <PrintModal
-                isOpen={printModalOpen}
-                onClose={() => setPrintModalOpen(false)}
-                graphRef={graphRef}
-            />
             {/* 状態表示 */}
             {status === "Loading" &&
                 (<div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50">
@@ -460,11 +453,7 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
                         })}
                         </div>
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
-                            <button
-                                onClick={() => setPrintModalOpen(true)}
-                            >
-                                <Printer size={20} />
-                            </button>
+                            <PrintModal graphRef={graphRef}/>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <RefreshCw />

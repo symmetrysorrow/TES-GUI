@@ -6,10 +6,10 @@ import React, {
     forwardRef,
     useEffect,
 } from "react";
-import TESGraph, { TESGraphProps, TESGraphRef } from "./TESGraph";
+import TESGraph, {TESGraphProps, TESGraphRef} from "./TESGraph";
 import { PlotData } from "plotly.js";
-import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
-import { Menu, Printer } from "lucide-react";
+import {Tab, TabGroup, TabList, TabPanels, TabPanel} from "@headlessui/react";
+import { Menu, } from "lucide-react";
 import PrintModal from "@/TESGraph/TESGraphModal.tsx";
 import { TESASidebar } from "@/TESGraph/TESASidebar.tsx";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar.tsx";
@@ -73,7 +73,6 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
         ref
     ) => {
         const [selectedTab, setSelectedTab] = useState(tabs[0].label);
-        const [printModalOpen, setPrintModalOpen] = useState(false);
 
         const innerGraphRefs = useRef<Record<string, React.RefObject<TESGraphRef>>>(
             tabs.reduce((acc, tab) => {
@@ -183,12 +182,6 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
         return (
             <SidebarProvider>
                 <div className="flex w-full h-full relative">
-                    <PrintModal
-                        isOpen={printModalOpen}
-                        onClose={() => setPrintModalOpen(false)}
-                        graphRef={innerGraphRefs.current[selectedTab]}
-                    />
-
                     <div className="flex-grow flex flex-col">
                         <TabGroup
                             selectedIndex={tabs.findIndex((t) => t.label === selectedTab)}
@@ -211,12 +204,10 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                 <div className="absolute left-1 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800">
                                     <CustomSidebarTrigger />
                                 </div>
-                                <button
-                                    onClick={() => setPrintModalOpen(true)}
-                                    className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800"
-                                >
-                                    <Printer size={20} />
-                                </button>
+                                <div className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800">
+                                    <PrintModal graphRef={innerGraphRefs.current[selectedTab]}/>
+                                </div>
+
                             </TabList>
 
                             <TabPanels className="relative flex-grow min-h-0 h-full">
@@ -244,6 +235,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                                 }}
                                                 {...restProps}
                                             />
+
                                         </div>
                                     </TabPanel>
                                 ))}

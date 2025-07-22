@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TESGraphRef, ExportImageOptions } from "./TESGraph";
 import { writeFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
+import { Printer } from "lucide-react";
 
 type PrintModalProps = {
-    isOpen: boolean;
-    onClose: () => void;
     graphRef: React.RefObject<TESGraphRef>;
 };
 
-export default function PrintModal({ isOpen, onClose, graphRef }: PrintModalProps) {
+export default function PrintModal({ graphRef }: PrintModalProps) {
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
+    const [open, setOpen] = useState(false);
 
     const [exportOptions, setExportOptions] = useState<ExportImageOptions>({
         format: "png",
@@ -25,19 +25,22 @@ export default function PrintModal({ isOpen, onClose, graphRef }: PrintModalProp
         transparent: true,
     });
 
+    // ✅ 開いた時にプレビュー生成
     useEffect(() => {
-        const timeout = setTimeout(async () => {
-            if (graphRef.current) {
-                try {
-                    const uri = await graphRef.current.exportImage(exportOptions);
-                    setImageUri(uri);
-                } catch (e) {
-                    console.error("exportImage error:", e);
+        if (open) {
+            const timeout = setTimeout(async () => {
+                if (graphRef.current) {
+                    try {
+                        const uri = await graphRef.current.exportImage(exportOptions);
+                        setImageUri(uri);
+                    } catch (e) {
+                        console.error("exportImage error:", e);
+                    }
                 }
-            }
-        }, 300);
-        return () => clearTimeout(timeout);
-    }, [exportOptions, graphRef,isOpen]);
+            }, 300);
+            return () => clearTimeout(timeout);
+        }
+    }, [open, exportOptions, graphRef]);
 
     const handleSave = async () => {
         if (!imageUri) return;
@@ -58,7 +61,6 @@ export default function PrintModal({ isOpen, onClose, graphRef }: PrintModalProp
                     fileData = Uint8Array.from(binary, c => c.charCodeAt(0));
                 }
                 await writeFile(path, fileData);
-                onClose();
             }
         } catch (e) {
             console.error(e);
@@ -69,13 +71,11 @@ export default function PrintModal({ isOpen, onClose, graphRef }: PrintModalProp
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-none w-full h-[90vh] bg-white text-gray-800">
-                <DialogHeader>
-                    <DialogTitle className="text-base font-semibold text-gray-900">グラフをエクスポート</DialogTitle>
-                </DialogHeader>
-
-                {/* ⚙️ 設定パネル */}
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger>
+                <Printer />
+            </PopoverTrigger>
+            <PopoverContent className="max-w-none w-full bg-white text-gray-800">
                 <div className="flex flex-wrap gap-3 text-sm mb-2">
                     <div className="flex flex-col">
                         <span className="mb-1 text-gray-700">形式</span>
@@ -123,7 +123,7 @@ export default function PrintModal({ isOpen, onClose, graphRef }: PrintModalProp
                 </div>
 
                 {/* 🖼 プレビュー */}
-                <div className="flex-1 border rounded bg-gray-50 flex items-center justify-center">
+                <div className="flex-1 border max-w-[50vw] rounded bg-gray-50 flex items-center justify-center">
                     {imageUri ? (
                         <img src={imageUri} alt="Preview" className="max-h-full max-w-full" />
                     ) : (
@@ -131,16 +131,13 @@ export default function PrintModal({ isOpen, onClose, graphRef }: PrintModalProp
                     )}
                 </div>
 
-                {/* 💾 保存/閉じる */}
-                <DialogFooter className="mt-3 flex gap-2">
+                {/* 💾 保存 */}
+                <div className="flex justify-end mt-2">
                     <Button size="sm" onClick={handleSave} disabled={!imageUri || saving}>
                         {saving ? "保存中..." : "保存"}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={onClose} disabled={saving}>
-                        キャンセル
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                </div>
+            </PopoverContent>
+        </Popover>
     );
 }

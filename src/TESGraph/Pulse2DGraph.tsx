@@ -37,7 +37,7 @@ const Pulse2DSidebar: React.FC<Pulse2DSidebarProps> = ({
                                                            setFontSizes,
                                                        }) => {
     return (
-        <Sidebar side="left">
+        <Sidebar side="left"  collapsible="none">
             <SidebarContent>
 
                 {/* タイトル設定 */}

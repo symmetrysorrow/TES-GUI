@@ -4,8 +4,8 @@ import {invoke} from "@tauri-apps/api/core";
 import {TESGraphRef} from "@/TESGraph/TESGraph.tsx";
 
 const rtTabs = [
-    { label: "RT", xKey: "Temp", yKey: "R_tes", defaultTitle: "RT", defaultXaxis: "Temp", defaultYaxis: "R_tes" },
-    { label: "Alpha", xKey: "BiasPoint", yKey: "Alpha", defaultTitle: "Alpha", defaultXaxis: "Bias Point", defaultYaxis: "Alpha" },
+    { label: "RT", xKey: "Temp", yKey: "R_tes", defaultTitle: "RT", defaultXaxis: "$Temp[mK]$", defaultYaxis: "$R_{tes}[\\Omega]$" },
+    { label: "Alpha", xKey: "BiasPoint", yKey: "Alpha", defaultTitle: "Alpha", defaultXaxis: "$Bias Point$", defaultYaxis: "$\\alpha$" },
 ];
 
 const RTGraph = ({ tabId }: { tabId: string }) => {
@@ -35,7 +35,7 @@ const RTGraph = ({ tabId }: { tabId: string }) => {
     const graphProps = {
         data: RTData??{},
         tabs: rtTabs,
-        unitLabel: "microA",
+        unitLabel: "\\mu A",
         sidebarOpen,
         onToggleSidebar: () => setSidebarOpen((prev) => !prev),
     };
@@ -49,7 +49,7 @@ const RTGraph = ({ tabId }: { tabId: string }) => {
                     Loading...
                 </div>
             ) : (
-                <>
+                <div className="flex-1 flex h-full">
                     {/* TESAGraph */}
                     <div className="flex-1 min-h-0">
                         <TESAGraph
@@ -57,7 +57,7 @@ const RTGraph = ({ tabId }: { tabId: string }) => {
                             {...graphProps}
                         />
                     </div>
-                </>
+                </div>
             )}
         </div>
     );

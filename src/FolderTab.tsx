@@ -184,9 +184,12 @@ const DynamicTabs = () => {
                     //const targetTab = tabs.find((t) => t.id === newTabId);
                 }
             }}
-            className="flex flex-1 flex-col  w-full mx-auto text-black" id="dynamic-tabs-container"
+            className="flex flex-1 flex-col h-full w-full mx-auto text-black" id="dynamic-tabs-container"
         >
-            <TabList className="flex flex-shrink-0 items-center p-0.5 bg-zinc-300">
+            <TabList className="
+                flex flex-shrink-0 items-center p-0.5 bg-zinc-300
+                overflow-x-auto whitespace-nowrap scrollbar-thin scrollbar-thumb-zinc-400 scrollbar-track-transparent"
+            >
                 {tabs.map((tab) => (
                     <Tab
                         key={tab.id}

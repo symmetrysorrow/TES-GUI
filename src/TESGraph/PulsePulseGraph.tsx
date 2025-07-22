@@ -96,6 +96,8 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
 
     const plotData: Partial<PlotData>[] = [];
 
+    const plotMax= analysis?.Pulse ? Math.max(...analysis.Pulse) : 1;
+
     if (analysis?.Time && analysis?.Pulse && traceSettings.Pulse.visible) {
         plotData.push({
             x: analysis.Time,
@@ -127,9 +129,10 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                 analysis.Time[analysis.PIH.DecayLowIndex],
                 analysis.Time[analysis.PIH.DecayLowIndex]
             ],
-            y: [0, 0, 1, 1, 0],
+            y: [0, 0, plotMax, plotMax, 0],
             type: "scatter",
             fill: "toself",
+            mode:"lines",
             fillcolor: traceSettings.DecayRegion.color,
             line: { width: 0 },
             name: "Decay Region",
@@ -145,9 +148,10 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                 analysis.Time[analysis.PAH.BaseStart],
                 analysis.Time[analysis.PAH.BaseStart]
             ],
-            y: [0, 0, 1, 1, 0],
+            y: [0, 0, plotMax, plotMax, 0],
             type: "scatter",
             fill: "toself",
+            mode:"lines",
             fillcolor: traceSettings.BaseRegion.color,
             line: { width: 0 },
             name: "Base Region",
@@ -163,9 +167,10 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                 analysis.Time[analysis.PAH.PeakAverageStart],
                 analysis.Time[analysis.PAH.PeakAverageStart]
             ],
-            y: [0, 0, 1, 1, 0],
+            y: [0, 0, plotMax, plotMax, 0],
             type: "scatter",
             fill: "toself",
+            mode:"lines",
             fillcolor: traceSettings.PeakAverageRegion.color,
             line: { width: 0 },
             name: "Peak Average Region",
@@ -181,9 +186,10 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                 analysis.Time[analysis.PIH.RiseLowIndex],
                 analysis.Time[analysis.PIH.RiseLowIndex]
             ],
-            y: [0, 0, 1, 1, 0],
+            y: [0, 0, plotMax, plotMax, 0],
             type: "scatter",
             fill: "toself",
+            mode:"lines",
             fillcolor: traceSettings.RiseRegion.color,
             line: { width: 0 },
             name: "Rise Region",
@@ -211,7 +217,7 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
     return (
         <SidebarProvider>
             <div className="flex h-full w-full">
-                <Sidebar side="left" className="bg-white text-gray-900">
+                <Sidebar side="left" className="bg-white text-gray-900"  collapsible="none">
                     <SidebarContent>
                         {/* タイトル設定 */}
                         {/* タイトル設定 */}
@@ -312,7 +318,7 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                     </SidebarContent>
                 </Sidebar>
 
-                <div className="flex-grow">
+                <div className="flex-grow p-4">
                     <TESGraph data={plotData} layout={layout} ref={graphRef} />
                 </div>
             </div>

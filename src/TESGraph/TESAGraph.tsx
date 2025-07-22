@@ -159,7 +159,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                         type: "scatter" as const,
                         mode: setting?.mode || "lines+markers",
                         marker: { color: setting?.color, symbol: setting?.markerSymbol },
-                        name: `${key}${unitLabel}`,
+                        name: "$"+key+unitLabel+"$",
                         visible: isVisible && setting?.visible ? true : "legendonly",
                     };
                 });
@@ -186,9 +186,9 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                         <TabGroup
                             selectedIndex={tabs.findIndex((t) => t.label === selectedTab)}
                             onChange={(i) => setSelectedTab(tabs[i].label)}
-                            className="min-h-0 h-full"
+                            className="min-h-0 h-full flex flex-col"
                         >
-                            <TabList className="relative flex justify-center border-b border-gray-400 px-2">
+                            <TabList className="relative flex justify-center border-b border-gray-400p">
                                 {tabs.map((tab) => (
                                     <Tab
                                         key={tab.label}
@@ -210,7 +210,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
 
                             </TabList>
 
-                            <TabPanels className="relative flex-grow min-h-0 h-full">
+                            <TabPanels className="relative flex-1 min-h-0 p-4">
                                 {tabs.map((tab) => (
                                     <TabPanel key={tab.label} className="flex h-full overflow-hidden" unmount={false}>
                                         <TESASidebar

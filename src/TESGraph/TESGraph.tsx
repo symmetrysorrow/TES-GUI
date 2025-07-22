@@ -173,7 +173,7 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
 
         const combinedLayout: Partial<Layout> = {
             autosize: true,
-            margin: { t: 50, l: 50, r: 20, b: 50 },
+            //margin: { t: 50, l: 50, r: 20, b: 50 },
             paper_bgcolor: "#fff",
             plot_bgcolor: "rgba(0,0,0,0)",
             dragmode: dragMode,

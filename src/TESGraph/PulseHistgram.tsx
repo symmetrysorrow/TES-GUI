@@ -41,7 +41,7 @@ const HistogramSidebar: React.FC<HistogramSidebarProps> = ({
                                                                setFontSizes,
                                                            }) => {
     return (
-        <Sidebar side="left">
+        <Sidebar side="left" collapsible="none">
             <SidebarContent>
 
                 {/* タイトル設定 */}
@@ -180,7 +180,7 @@ export function PulseHistogram({ data, binNum: initialBinNum, xaxis, yaxis, grap
                     fontSizes={fontSizes}
                     setFontSizes={setFontSizes}
                 />
-                <div className="flex-grow">
+                <div className="flex-grow flex-1 h-full p-4">
                     <TESGraph data={plotData} layout={layout} ref={graphRef} />
                 </div>
             </div>

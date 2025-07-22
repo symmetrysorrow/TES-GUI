@@ -480,8 +480,7 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
                     {/* パネル */}
                     <div className="flex-1 relative overflow-auto" id={"Panel"}>
                         {activeTab === "histogram" && settings.histogram && (
-                            <div>
-                                <span>some</span>
+
                             <PulseHistogram
                                 data={Object.values(pulseData?.[settings.histogram.channel] ?? {}).map(
                                     d => d[settings.histogram!.field as keyof PulseInfo]
@@ -492,7 +491,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
                                 graphRef={graphRef}
                             />
 
-                            </div>
                         )}
                         {activeTab === "pulse" && settings.pulse &&(
                             <PulsePulse

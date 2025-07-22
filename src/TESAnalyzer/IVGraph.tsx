@@ -6,8 +6,8 @@ import {Shape} from "plotly.js"; // TESAGraph本体のimport想定
 import {Button,Description, Dialog, DialogPanel, DialogTitle} from '@headlessui/react'
 
 const ivTabs = [
-    { id: "IV", label: "IV", xKey: "I_bias", yKey: "V_out", defaultTitle: "IV Title", defaultXaxis: "I_bias", defaultYaxis: "V_out" },
-    { id: "IR", label: "IR", xKey: "I_bias", yKey: "R_tes", defaultTitle: "IR Title", defaultXaxis: "I_bias", defaultYaxis: "R_tes" },
+    { id: "IV", label: "IV", xKey: "I_bias", yKey: "V_out", defaultTitle: "IV Title", defaultXaxis: "$I_{bias}$", defaultYaxis: "$V_{out}$" },
+    { id: "IR", label: "IR", xKey: "I_bias", yKey: "R_tes", defaultTitle: "IR Title", defaultXaxis: "$I_{bias}$", defaultYaxis: "$R_{tes}$" },
 ];
 
 const IVGraph = ({ tabId }: { tabId: string }) => {
@@ -117,7 +117,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
     const graphProps = {
         data: IVData??{},
         tabs: ivTabs,
-        unitLabel: "microA",
+        unitLabel: "mK",
         sidebarOpen,
         onToggleSidebar: () => setSidebarOpen((prev) => !prev),
         dragMode: ivSelecting ? "select" as const : undefined,
@@ -125,7 +125,6 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
         shapes: shapes,
     };
 
-    // @ts-ignore
     return (
         <div className="h-full flex flex-col">
             {isLoading ? (
@@ -197,7 +196,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                     </Dialog>
 
                     {/* TESAGraph */}
-                    <div className="flex-1 min-h-0">
+                    <div className="relative flex-1 min-h-0">
                         <TESAGraph
                             ref={graphRef}
                             {...graphProps}
@@ -210,7 +209,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                     </div>
 
                     {/* TESAGraph の真下・右寄せにボタン */}
-                    <div className="flex-shrink-0 flex justify-end gap-2 mt-2 mb-2 ml-2 relative z-11">
+                    <div className="absolute bottom-2 right-2 flex gap-2 z-11">
                         {!ivSelecting && (
                             <Button
                                 className="inline-flex w-auto items-center gap-2 rounded-md bg-zinc-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-gray-600"

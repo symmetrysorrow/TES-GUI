@@ -75,12 +75,6 @@ fn main() {
                     Err(e) => println!("Error: {}", e),
                 }
             }
-            "savefig" if args.len() == 3 => {
-                match TabManager::SaveFigCommand(args[1].into(), args[2].into()) {
-                    Ok(_) => println!("Figure saved."),
-                    Err(e) => println!("Error: {}", e),
-                }
-            }
             _ => println!("Unknown or malformed command. Type 'help'."),
         }
     }

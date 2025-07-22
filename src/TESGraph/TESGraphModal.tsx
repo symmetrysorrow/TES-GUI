@@ -37,7 +37,7 @@ export default function PrintModal({ isOpen, onClose, graphRef }: PrintModalProp
             }
         }, 300);
         return () => clearTimeout(timeout);
-    }, [exportOptions, graphRef]);
+    }, [exportOptions, graphRef,isOpen]);
 
     const handleSave = async () => {
         if (!imageUri) return;

@@ -515,16 +515,6 @@ pub fn GetPulseAnalysisCommand(
     }
 }
 
-pub fn SaveFigCommand(TabName: String, path: String) -> Result<(), String> {
-    let map = PROCESSORS.lock().unwrap();
-    match map.get(&TabName) {
-        Some(TabProcessor::IV(p)) => {
-            p.SaveFig(&path)?;
-            Ok(())
-        }
-        _ => Err("Invalid tab or processor type".into()),
-    }
-}
 #[tauri::command]
 pub fn SaveConfigCommand(TabName:String,json:serde_json::Value) -> Result<(), String> {
     let mut map = PROCESSORS.lock().unwrap();

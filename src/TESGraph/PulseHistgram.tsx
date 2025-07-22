@@ -7,6 +7,8 @@ import {
     SidebarGroupContent,
     SidebarGroupLabel, SidebarProvider
 } from "@/components/ui/sidebar.tsx";
+import { Slider} from "@/components/ui/slider";
+
 
 export interface HistogramProps {
     data: number[];
@@ -89,16 +91,36 @@ const HistogramSidebar: React.FC<HistogramSidebarProps> = ({
                             value={color}
                             onChange={(e) => setColor(e.target.value)}
                         />
+
                         {/* ビン数設定 */}
-                        <label className="block text-sm font-medium mt-2">ビン数</label>
-                        <input
-                            type="number"
-                            className="w-full border px-2 py-1"
-                            value={binNum}
-                            min={1}
-                            onChange={(e) => setBinNum(Number(e.target.value))}
-                        />
+                        <label className="block text-sm font-medium mt-4 mb-1">ビン数</label>
+
+                        <div className="flex items-center space-x-2">
+                            {/* Slider */}
+                            <Slider
+                                value={[binNum]}
+                                min={1}
+                                max={2000}
+                                step={1}
+                                onValueChange={(values) => setBinNum(values[0])}
+                                className="flex-1" // 横幅を伸ばす
+                            >
+                            </Slider>
+
+                            {/* 数値入力 */}
+                            <input
+                                type="number"
+                                value={binNum}
+                                min={1}
+                                onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    if (!isNaN(val) && val >= 1) setBinNum(val);
+                                }}
+                                className="w-16 border px-1 py-0.5 text-xs text-center" // 小さめに
+                            />
+                        </div>
                     </SidebarGroupContent>
+
                 </SidebarGroup>
             </SidebarContent>
         </Sidebar>

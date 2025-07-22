@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Select, SelectTrigger, SelectContent, SelectItem} from "@/components/ui/select";
 
 type TESASidebarProps = {
     titles: Record<string, { main: string; xaxis: string; yaxis: string }>;

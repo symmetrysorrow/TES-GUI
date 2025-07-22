@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import { invoke } from "@tauri-apps/api/core";
 import { PlotData } from "plotly.js";
+import {Checkbox} from "@/components/ui/checkbox";
 
 type PulseAnalysisResult = {
     Time: number[];
@@ -203,80 +204,72 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
     return (
         <SidebarProvider>
             <div className="flex h-full w-full">
-                <Sidebar side="left" collapsible="none">
+                <Sidebar side="left" className="bg-white text-gray-900">
                     <SidebarContent>
+                        {/* タイトル設定 */}
                         <SidebarGroup>
-                            <SidebarGroupLabel>タイトル設定</SidebarGroupLabel>
+                            <SidebarGroupLabel className="text-sm font-semibold mb-2">タイトル設定</SidebarGroupLabel>
                             <SidebarGroupContent>
-                                <label className="block text-sm">タイトル</label>
-                                <input
-                                    className="w-full border px-2 py-1"
-                                    value={titles.Pulse.main}
-                                    onChange={(e) =>
-                                        setTitles(prev => ({
-                                            ...prev,
-                                            Pulse: { ...prev.Pulse, main: e.target.value }
-                                        }))
-                                    }
-                                />
-                                <label className="block text-sm mt-2">X軸</label>
-                                <input
-                                    className="w-full border px-2 py-1"
-                                    value={titles.Pulse.xaxis}
-                                    onChange={(e) =>
-                                        setTitles(prev => ({
-                                            ...prev,
-                                            Pulse: { ...prev.Pulse, xaxis: e.target.value }
-                                        }))
-                                    }
-                                />
-                                <label className="block text-sm mt-2">Y軸</label>
-                                <input
-                                    className="w-full border px-2 py-1"
-                                    value={titles.Pulse.yaxis}
-                                    onChange={(e) =>
-                                        setTitles(prev => ({
-                                            ...prev,
-                                            Pulse: { ...prev.Pulse, yaxis: e.target.value }
-                                        }))
-                                    }
-                                />
+                                <div className="space-y-3 text-xs">
+                                    {["main", "xaxis", "yaxis"].map((field) => (
+                                        <div key={field}>
+                                            <label className="block mb-1 capitalize">
+                                                {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
+                                            </label>
+                                            <input
+                                                className="w-40 border rounded px-2 py-1 text-sm leading-5"
+                                                value={titles.Pulse[field as keyof typeof titles.Pulse]}
+                                                onChange={(e) =>
+                                                    setTitles((prev) => ({
+                                                        ...prev,
+                                                        Pulse: { ...prev.Pulse, [field]: e.target.value },
+                                                    }))
+                                                }
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
                             </SidebarGroupContent>
                         </SidebarGroup>
 
+                        {/* トレース設定 */}
                         <SidebarGroup>
-                            <SidebarGroupLabel>トレース設定</SidebarGroupLabel>
+                            <SidebarGroupLabel className="text-sm font-semibold mt-6 mb-2">トレース設定</SidebarGroupLabel>
                             <SidebarGroupContent>
                                 {Object.entries(traceSettings).map(([key, setting]) => (
-                                    <div key={key} className="flex items-center mb-2">
-                                        <input
-                                            type="checkbox"
+                                    <div key={key} className="flex items-center gap-3 mb-3 text-xs">
+                                        <Checkbox
                                             checked={setting.visible}
-                                            onChange={(e) =>
-                                                setTraceSettings(prev => ({
+                                            onChange={(checked) =>
+                                                setTraceSettings((prev) => ({
                                                     ...prev,
-                                                    [key]: { ...prev[key], visible: e.target.checked }
+                                                    [key]: { ...prev[key], visible: !!checked },
                                                 }))
                                             }
+                                            className="w-4 h-4"
                                         />
-                                        <span className="ml-2 flex-1">{key}</span>
-                                        <input
-                                            type="color"
-                                            value={setting.color}
-                                            onChange={(e) =>
-                                                setTraceSettings(prev => ({
-                                                    ...prev,
-                                                    [key]: { ...prev[key], color: e.target.value }
-                                                }))
-                                            }
-                                            className="ml-2"
-                                        />
+                                        <span className="flex-1">{key}</span>
+                                        <div className="relative w-6 h-6 rounded-full border border-gray-300 overflow-hidden cursor-pointer">
+                                            <input
+                                                type="color"
+                                                value={setting.color}
+                                                onChange={(e) =>
+                                                    setTraceSettings((prev) => ({
+                                                        ...prev,
+                                                        [key]: { ...prev[key], color: e.target.value },
+                                                    }))
+                                                }
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                            />
+                                            <div style={{ backgroundColor: setting.color }} className="w-full h-full rounded-full pointer-events-none" />
+                                        </div>
                                     </div>
                                 ))}
                             </SidebarGroupContent>
                         </SidebarGroup>
                     </SidebarContent>
                 </Sidebar>
+
 
                 <div className="flex-grow">
                     <TESGraph data={plotData} layout={layout} ref={graphRef}/>

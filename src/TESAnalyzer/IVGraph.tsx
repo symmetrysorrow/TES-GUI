@@ -38,6 +38,13 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
             })
     }, [tabId]);
 
+    useEffect(() => {
+        if (ivModalOpen) {
+            setSidebarOpen(false);
+        }
+    }, [ivModalOpen]);
+
+
     // モーダルの確定処理
     const handleIVModalConfirm = (selectedKey: string) => {
         setIVSelectedKeyValue(selectedKey);
@@ -134,12 +141,12 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                         open={ivModalOpen}
                         as="div"
                         onClose={() => setIVModalOpen(false)}
-                        className="z-10 focus:outline-none"
+                        className="z-11 focus:outline-none"
                     >
-                        <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm" aria-hidden="true" />
-                        <div className="fixed inset-0 z-10 flex items-center justify-center p-4">
+                        <div className="fixed inset-0  z-11 bg-opacity-60 backdrop-blur-sm" aria-hidden="true" />
+                        <div className="fixed inset-0 z-11 flex items-center justify-center p-4">
                             <DialogPanel className="w-full max-w-md rounded-xl bg-white/5 p-6 backdrop-blur-2xl duration-300 ease-out data-closed:scale-95 data-closed:opacity-0">
-                                <DialogTitle className="text-base/7 font-medium text-white mb-2">
+                                <DialogTitle className="text-base/7 font-medium text-gray-600 mb-2">
                                     温度を選択してください
                                 </DialogTitle>
                                 <Description className="text-sm/6 text-white/60 mb-4">
@@ -157,7 +164,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                                     {Object.keys(IVData??{}).map((current) => (
                                         <label
                                             key={current}
-                                            className="block mb-1 cursor-pointer hover:bg-white/10 rounded px-2 py-1 text-white"
+                                            className="block mb-1 cursor-pointer hover:bg-white/10 rounded px-2 py-1 text-gray-600"
                                         >
                                             <input
                                                 type="radio"
@@ -203,7 +210,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                     </div>
 
                     {/* TESAGraph の真下・右寄せにボタン */}
-                    <div className="flex-shrink-0 flex justify-end gap-2 mt-2 mb-2 ml-2 relative z-10">
+                    <div className="flex-shrink-0 flex justify-end gap-2 mt-2 mb-2 ml-2 relative z-11">
                         {!ivSelecting && (
                             <Button
                                 className="inline-flex w-auto items-center gap-2 rounded-md bg-zinc-500 px-3 py-1.5 text-sm/6 font-semibold text-white hover:bg-gray-600"

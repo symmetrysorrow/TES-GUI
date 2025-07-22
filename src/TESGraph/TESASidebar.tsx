@@ -84,7 +84,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                     <input
                                         type="number"
                                         className="w-12 border px-1 py-0.5 text-xs text-center"
-                                        value={titles[currentTab][field as keyof (typeof titles)[string]]}
+                                        value={fontSizes[currentTab][field as keyof (typeof titles)[string]]}
                                         onChange={(e) => {
                                             const val = Number(e.target.value);
                                             if (!isNaN(val)) {

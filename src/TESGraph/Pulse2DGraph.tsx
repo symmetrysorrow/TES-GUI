@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TESGraph from "@/TESGraph/TESGraph.tsx";
+import TESGraph, {TESGraphRef} from "@/TESGraph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -13,6 +13,8 @@ export interface Pulse2DProps {
     ydata: number[];
     xaxis: string;
     yaxis: string;
+
+    graphRef: React.RefObject<TESGraphRef>;
 }
 
 type Pulse2DSidebarProps = {
@@ -91,7 +93,7 @@ const Pulse2DSidebar: React.FC<Pulse2DSidebarProps> = ({
     );
 };
 
-export function Pulse2D({ xdata,ydata, xaxis, yaxis }: Pulse2DProps) {
+export function Pulse2D({ xdata,ydata, xaxis, yaxis , graphRef}: Pulse2DProps) {
     // サイドバーで操作する状態
     const [color, setColor] = useState("#4a90e2");
     const [titles, setTitles] = useState<Record<string, { main: string; xaxis: string; yaxis: string }>>({
@@ -130,7 +132,7 @@ export function Pulse2D({ xdata,ydata, xaxis, yaxis }: Pulse2DProps) {
 
                 {/* グラフ */}
                 <div className="flex-grow">
-                    <TESGraph data={plotData} layout={layout} />
+                    <TESGraph data={plotData} layout={layout} ref={graphRef} />
                 </div>
             </div>
         </SidebarProvider>

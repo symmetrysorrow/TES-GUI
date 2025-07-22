@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TESGraph from "@/TESGraph/TESGraph.tsx";
+import TESGraph,{TESGraphRef} from "@/TESGraph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -13,6 +13,7 @@ export interface HistogramProps {
     xaxis: string;
     yaxis: string;
     binNum: number;
+    graphRef: React.RefObject<TESGraphRef>;
 }
 
 type HistogramSidebarProps = {
@@ -104,7 +105,7 @@ const HistogramSidebar: React.FC<HistogramSidebarProps> = ({
     );
 };
 
-export function PulseHistogram({ data, binNum: initialBinNum, xaxis, yaxis }: HistogramProps) {
+export function PulseHistogram({ data, binNum: initialBinNum, xaxis, yaxis, graphRef }: HistogramProps) {
     // サイドバーで操作する状態
     const [color, setColor] = useState("#4a90e2");
     const [binNum, setBinNum] = useState(initialBinNum);
@@ -145,7 +146,7 @@ export function PulseHistogram({ data, binNum: initialBinNum, xaxis, yaxis }: Hi
 
                 {/* グラフ */}
                 <div className="flex-grow">
-                    <TESGraph data={plotData} layout={layout} />
+                    <TESGraph data={plotData} layout={layout} ref={graphRef}/>
                 </div>
             </div>
         </SidebarProvider>

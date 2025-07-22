@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState,useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { PulseHistogram } from "@/TESGraph/PulseHistgram";
@@ -7,8 +7,10 @@ import Pulse2DGraph from "@/TESGraph/Pulse2DGraph.tsx";
 import PulsePulse from "@/TESGraph/PulsePulseGraph.tsx";
 import PulseConfig from "@/TESAnalyzer/PulseConfig.tsx";
 import {Button} from "@/components/ui/button.tsx";
-import {RefreshCw,Settings} from "lucide-react";
+import {Printer, RefreshCw, Settings} from "lucide-react";
 import {Progress} from "@/components/ui/progress.tsx";
+import { TESGraphRef } from "@/TESGraph/TESGraph";
+import PrintModal from "@/TESGraph/TESGraphModal.tsx";
 
 // 型定義はそのままでOK
 type PulseInfo = { Base: number; PeakAverage: number; PeakIndex: number; RiseTime: number; DecayTime: number; };
@@ -21,7 +23,9 @@ type TabSettings = {
     scatter2d?: { xChannel: string; xField: string; yChannel: string; yField: string; };
 };
 
-const PulseGraph = ({ tabId }: { tabId: string }) => {
+export const PulseGraph = ({ tabId }: { tabId: string }) => {
+    const graphRef = useRef<TESGraphRef>(null);
+
     const [status, setStatus] = useState<ScreenStatus>("Loading");
     const [pulseData, setPulseData] = useState<PulseData | null>(null);
     const [progress, setProgress] = useState(0);
@@ -32,6 +36,8 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
     const [settings, setSettings] = useState<TabSettings>({});
 
     const [pulseConfigVersion, setPulseConfigVersion] = useState(0);
+
+    const [printModalOpen, setPrintModalOpen] = useState(false);
 
     // pulseData がない場合は空配列
     const channels = pulseData ? Object.keys(pulseData) : [];
@@ -110,6 +116,11 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
 
     return (
         <div className="flex flex-col h-full">
+            <PrintModal
+                isOpen={printModalOpen}
+                onClose={() => setPrintModalOpen(false)}
+                graphRef={graphRef}
+            />
             {/* 状態表示 */}
             {status === "Loading" &&
                 (<div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50">
@@ -420,6 +431,11 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                         })}
                         </div>
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
+                            <button
+                                onClick={() => setPrintModalOpen(true)}
+                            >
+                                <Printer size={20} />
+                            </button>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <RefreshCw />
@@ -453,6 +469,7 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                                 xaxis={settings.histogram.field}
                                 yaxis="Count"
                                 binNum={settings.histogram.binNum}
+                                graphRef={graphRef}
                             />
                         )}
                         {activeTab === "pulse" && settings.pulse &&(
@@ -461,6 +478,7 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                                 channel={settings.pulse.channel}
                                 pulseIndex={settings.pulse.pulseIndex}
                                 pulseConfigVer={pulseConfigVersion}
+                                graphRef={graphRef}
                             />
                         )}
                         {activeTab === "2d" && settings.scatter2d&&(
@@ -473,6 +491,7 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
                                 )}
                                 xaxis={settings.scatter2d.xField}
                                 yaxis={settings.scatter2d.yField}
+                                graphRef={graphRef}
                             />
                         )}
                     </div>
@@ -482,4 +501,5 @@ const PulseGraph = ({ tabId }: { tabId: string }) => {
         </div>
     );
 };
-export default PulseGraph;
+
+

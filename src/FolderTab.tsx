@@ -8,7 +8,7 @@ import { listen } from "@tauri-apps/api/event";
 import IVGraph from "@/TESAnalyzer/IVGraph.tsx";
 import RTGraph from "@/TESAnalyzer/RTGraph.tsx";
 import {TargetEnum} from "@/TargetContext.tsx";
-import PulseGraph from "@/TESAnalyzer/PulseGraph.tsx";
+import {PulseGraph} from "@/TESAnalyzer/PulseGraph.tsx";
 
 type TabItem = {
     id: string;

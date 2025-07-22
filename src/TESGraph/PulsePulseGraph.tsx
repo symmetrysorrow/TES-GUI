@@ -1,5 +1,5 @@
-import  { useEffect, useState } from "react";
-import TESGraph from "@/TESGraph/TESGraph.tsx";
+import React, { useEffect, useState } from "react";
+import TESGraph,{TESGraphRef} from "@/TESGraph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -49,9 +49,10 @@ export interface PulsePulseProps {
     channel: string;
     pulseIndex: string;
     pulseConfigVer:number;
+    graphRef: React.RefObject<TESGraphRef>;
 }
 
-export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer}: PulsePulseProps) {
+export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRef}: PulsePulseProps) {
     const [titles, setTitles] = useState({
         Pulse: { main: "Pulse Graph", xaxis: "Time", yaxis: "Amplitude" },
     });
@@ -278,7 +279,7 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer}: Pulse
                 </Sidebar>
 
                 <div className="flex-grow">
-                    <TESGraph data={plotData} layout={layout} />
+                    <TESGraph data={plotData} layout={layout} ref={graphRef}/>
                 </div>
             </div>
         </SidebarProvider>

@@ -168,7 +168,6 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
             return () => resizeObserver.disconnect();
         }, []);
 
-
         const combinedLayout: Partial<Layout> = {
             autosize: true,
             margin: { t: 50, l: 50, r: 20, b: 50 },

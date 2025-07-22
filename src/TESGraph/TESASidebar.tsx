@@ -34,17 +34,17 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
         <Sidebar side="left" className="bg-white text-gray-900">
             <SidebarContent>
 
-                {/* タイトル設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel className="text-sm font-semibold mb-2">タイトル設定</SidebarGroupLabel>
-                    <SidebarGroupContent className="space-y-3 text-xs">
+                    <SidebarGroupContent className="space-y-4 text-xs">
                         {["main", "xaxis", "yaxis"].map((field) => (
-                            <div key={field}>
+                            <div key={field} className="mb-2">
                                 <label className="block mb-1 capitalize">
                                     {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
                                 </label>
+                                {/* タイトル文字 input */}
                                 <input
-                                    className="w-40 border rounded px-2 py-1 text-sm leading-5"
+                                    className="w-full border rounded px-2 py-1 text-sm leading-5 mb-1"
                                     value={titles[currentTab][field as keyof (typeof titles)[string]]}
                                     onChange={(e) =>
                                         setTitles((prev) => ({
@@ -53,20 +53,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                         }))
                                     }
                                 />
-                            </div>
-                        ))}
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
-                {/* フォントサイズ設定 */}
-                <SidebarGroup>
-                    <SidebarGroupLabel className="text-sm font-semibold mb-2">フォントサイズ</SidebarGroupLabel>
-                    <SidebarGroupContent className="space-y-3 text-xs">
-                        {["main", "xaxis", "yaxis"].map((field) => (
-                            <div key={field}>
-                                <label className="block mb-1 capitalize">
-                                    {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
-                                </label>
+                                {/* フォントサイズ */}
                                 <div className="flex items-center gap-2">
                                     <Slider
                                         value={[fontSizes[currentTab][field as keyof (typeof fontSizes)[string]]]}
@@ -84,7 +71,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                     <input
                                         type="number"
                                         className="w-12 border px-1 py-0.5 text-xs text-center"
-                                        value={fontSizes[currentTab][field as keyof (typeof titles)[string]]}
+                                        value={fontSizes[currentTab][field as keyof (typeof fontSizes)[string]]}
                                         onChange={(e) => {
                                             const val = Number(e.target.value);
                                             if (!isNaN(val)) {
@@ -100,6 +87,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                         ))}
                     </SidebarGroupContent>
                 </SidebarGroup>
+
 
                 {/* カーブ設定 */}
                 <SidebarGroup>

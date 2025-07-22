@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TESGraph, {TESGraphRef} from "@/TESGraph/TESGraph.tsx";
+import TESGraph, { TESGraphRef } from "@/TESGraph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -7,13 +7,13 @@ import {
     SidebarGroupContent,
     SidebarGroupLabel, SidebarProvider
 } from "@/components/ui/sidebar.tsx";
+import { Slider } from "@/components/ui/slider";
 
 export interface Pulse2DProps {
     xdata: number[];
     ydata: number[];
     xaxis: string;
     yaxis: string;
-
     graphRef: React.RefObject<TESGraphRef>;
 }
 
@@ -23,62 +23,77 @@ type Pulse2DSidebarProps = {
     setTitles: React.Dispatch<React.SetStateAction<Record<string, { main: string; xaxis: string; yaxis: string }>>>;
     color: string;
     setColor: (color: string) => void;
+    fontSizes: Record<string, number>;
+    setFontSizes: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 };
 
 const Pulse2DSidebar: React.FC<Pulse2DSidebarProps> = ({
-                                                               titles,
-                                                               currentTab,
-                                                               setTitles,
-                                                               color,
-                                                               setColor,
-                                                           }) => {
+                                                           titles,
+                                                           currentTab,
+                                                           setTitles,
+                                                           color,
+                                                           setColor,
+                                                           fontSizes,
+                                                           setFontSizes,
+                                                       }) => {
     return (
         <Sidebar side="left">
             <SidebarContent>
+
+                {/* タイトル設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel>タイトル設定</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        {/* タイトル入力 */}
-                        <label className="block text-sm font-medium">タイトル</label>
-                        <input
-                            className="w-full border px-2 py-1"
-                            value={titles[currentTab].main}
-                            onChange={(e) =>
-                                setTitles(prev => ({
-                                    ...prev,
-                                    [currentTab]: { ...prev[currentTab], main: e.target.value }
-                                }))
-                            }
-                        />
-                        <label className="block text-sm font-medium mt-2">X軸</label>
-                        <input
-                            className="w-full border px-2 py-1"
-                            value={titles[currentTab].xaxis}
-                            onChange={(e) =>
-                                setTitles(prev => ({
-                                    ...prev,
-                                    [currentTab]: { ...prev[currentTab], xaxis: e.target.value }
-                                }))
-                            }
-                        />
-                        <label className="block text-sm font-medium mt-2">Y軸</label>
-                        <input
-                            className="w-full border px-2 py-1"
-                            value={titles[currentTab].yaxis}
-                            onChange={(e) =>
-                                setTitles(prev => ({
-                                    ...prev,
-                                    [currentTab]: { ...prev[currentTab], yaxis: e.target.value }
-                                }))
-                            }
-                        />
+                        {["main", "xaxis", "yaxis"].map((field) => (
+                            <div key={field} className="mb-4">
+                                <label className="block text-sm font-medium">
+                                    {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
+                                </label>
+                                <input
+                                    className="w-full border px-2 py-1"
+                                    value={titles[currentTab][field as keyof typeof titles[typeof currentTab]]}
+                                    onChange={(e) =>
+                                        setTitles(prev => ({
+                                            ...prev,
+                                            [currentTab]: { ...prev[currentTab], [field]: e.target.value }
+                                        }))
+                                    }
+                                />
+                                <div className="flex items-center mt-1 space-x-2">
+                                    <span className="text-xs">文字サイズ</span>
+                                    <Slider
+                                        value={[fontSizes[field]]}
+                                        min={8}
+                                        max={40}
+                                        step={1}
+                                        onValueChange={(values) =>
+                                            setFontSizes(prev => ({ ...prev, [field]: values[0] }))
+                                        }
+                                        className="flex-1"
+                                    />
+                                    <input
+                                        type="number"
+                                        value={fontSizes[field]}
+                                        min={8}
+                                        max={40}
+                                        onChange={(e) => {
+                                            const val = Number(e.target.value);
+                                            if (!isNaN(val) && val >= 8 && val <= 40) {
+                                                setFontSizes(prev => ({ ...prev, [field]: val }));
+                                            }
+                                        }}
+                                        className="w-12 border px-1 py-0.5 text-xs text-center"
+                                    />
+                                </div>
+                            </div>
+                        ))}
                     </SidebarGroupContent>
                 </SidebarGroup>
 
+                {/* 表示設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel>表示設定</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        {/* 色設定 */}
                         <label className="block text-sm font-medium mt-2">色</label>
                         <input
                             type="color"
@@ -88,19 +103,24 @@ const Pulse2DSidebar: React.FC<Pulse2DSidebarProps> = ({
                         />
                     </SidebarGroupContent>
                 </SidebarGroup>
+
             </SidebarContent>
         </Sidebar>
     );
 };
 
-export function Pulse2D({ xdata,ydata, xaxis, yaxis , graphRef}: Pulse2DProps) {
-    // サイドバーで操作する状態
+export function Pulse2D({ xdata, ydata, xaxis, yaxis, graphRef }: Pulse2DProps) {
     const [color, setColor] = useState("#4a90e2");
     const [titles, setTitles] = useState<Record<string, { main: string; xaxis: string; yaxis: string }>>({
         Pulse2D: { main: "Pulse Scatter", xaxis, yaxis }
     });
 
-    // Plotly用データ
+    const [fontSizes, setFontSizes] = useState<Record<string, number>>({
+        main: 16,
+        xaxis: 14,
+        yaxis: 14
+    });
+
     const plotData = [
         {
             x: xdata,
@@ -112,25 +132,37 @@ export function Pulse2D({ xdata,ydata, xaxis, yaxis , graphRef}: Pulse2DProps) {
     ];
 
     const layout = {
-        title: { text: titles.Pulse2D.main },
-        xaxis: { title: { text: titles.Pulse2D.xaxis } },
-        yaxis: { title: { text: titles.Pulse2D.yaxis } },
+        title: {
+            text: titles.Pulse2D.main,
+            font: { size: fontSizes.main }
+        },
+        xaxis: {
+            title: {
+                text: titles.Pulse2D.xaxis,
+                font: { size: fontSizes.xaxis }
+            }
+        },
+        yaxis: {
+            title: {
+                text: titles.Pulse2D.yaxis,
+                font: { size: fontSizes.yaxis }
+            }
+        },
         bargap: 0.05,
     };
 
     return (
         <SidebarProvider>
             <div className="flex h-full w-full">
-                {/* サイドバー */}
                 <Pulse2DSidebar
                     titles={titles}
                     currentTab="Pulse2D"
                     setTitles={setTitles}
                     color={color}
                     setColor={setColor}
+                    fontSizes={fontSizes}
+                    setFontSizes={setFontSizes}
                 />
-
-                {/* グラフ */}
                 <div className="flex-grow">
                     <TESGraph data={plotData} layout={layout} ref={graphRef} />
                 </div>

@@ -3,16 +3,16 @@ import React, {
     useCallback,
     useImperativeHandle,
     useRef,
-    forwardRef, useEffect,
+    forwardRef,
+    useEffect,
 } from "react";
 import TESGraph, { TESGraphProps, TESGraphRef } from "./TESGraph";
 import { PlotData } from "plotly.js";
-import {Tab, TabGroup, TabList, TabPanels, TabPanel} from "@headlessui/react";
-import {Menu, Printer} from "lucide-react";
+import { Tab, TabGroup, TabList, TabPanels, TabPanel } from "@headlessui/react";
+import { Menu, Printer } from "lucide-react";
 import PrintModal from "@/TESGraph/TESGraphModal.tsx";
-import {TESASidebar} from "@/TESGraph/TESASidebar.tsx";
-import {SidebarProvider, useSidebar} from "@/components/ui/sidebar.tsx";
-
+import { TESASidebar } from "@/TESGraph/TESASidebar.tsx";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar.tsx";
 
 export interface TESAData {
     [curveKey: string]: {
@@ -35,7 +35,7 @@ export interface TESAGraphProps extends Omit<TESGraphProps, "data"> {
     tabs: tabData[];
     sidebarOpen: boolean;
     onToggleSidebar: () => void;
-    visibleKeys?: string[]; // 追加
+    visibleKeys?: string[];
 }
 
 export interface TESASetting {
@@ -53,7 +53,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             tabs,
             sidebarOpen,
             onToggleSidebar,
-            visibleKeys, // 受け取る
+            visibleKeys,
             ...restProps
         },
         ref
@@ -61,8 +61,6 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
         const [selectedTab, setSelectedTab] = useState(tabs[0].label);
         const [printModalOpen, setPrintModalOpen] = useState(false);
 
-
-        // タブごとにTESGraphのrefを作成し保持（初回のみ）
         const innerGraphRefs = useRef<Record<string, React.RefObject<TESGraphRef>>>(
             tabs.reduce((acc, tab) => {
                 acc[tab.label] = React.createRef<TESGraphRef>();
@@ -70,16 +68,11 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }, {} as Record<string, React.RefObject<TESGraphRef>>)
         );
 
-        // 各カーブの表示設定をstate管理
         const [settings, setSettings] = useState<Record<string, TESASetting>>(() =>
             Object.keys(data).reduce((acc, key) => {
                 acc[key] = {
                     visible: true,
-                    color:
-                        "#" +
-                        Math.floor(Math.random() * 16777215)
-                            .toString(16)
-                            .padStart(6, "0"),
+                    color: "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0"),
                     mode: "lines+markers",
                     markerSymbol: "circle",
                 };
@@ -87,7 +80,6 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }, {} as Record<string, TESASetting>)
         );
 
-        // 各タブのタイトル・軸ラベルをstate管理
         const [titles, setTitles] = useState(
             tabs.reduce((acc, tab) => {
                 acc[tab.label] = {
@@ -97,6 +89,14 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                 };
                 return acc;
             }, {} as Record<string, { main: string; xaxis: string; yaxis: string }>)
+        );
+
+        // フォントサイズ：タブごとに管理
+        const [fontSizes, setFontSizes] = useState<Record<string, { main: number; xaxis: number; yaxis: number }>>(
+            tabs.reduce((acc, tab) => {
+                acc[tab.label] = { main: 16, xaxis: 14, yaxis: 14 };
+                return acc;
+            }, {} as Record<string, { main: number; xaxis: number; yaxis: number }>)
         );
 
         useEffect(() => {
@@ -118,96 +118,72 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }
         }, [data]);
 
-        // 表示中タブのTESGraphRefを外部に公開
         useImperativeHandle(ref, () => ({
             exportImage: async (options) => {
                 const currentRef = innerGraphRefs.current[selectedTab];
                 if (!currentRef?.current) return "";
                 return await currentRef.current.exportImage(options);
-            },forceRedraw: () => {
+            },
+            forceRedraw: () => {
                 const currentRef = innerGraphRefs.current[selectedTab];
-                if (currentRef?.current) {
-                    currentRef.current.forceRedraw();
-                }
+                currentRef?.current?.forceRedraw();
             }
         }));
 
-        // プロット用データ作成関数
         const createPlotData = useCallback(
-            (tab: TESAGraphProps["tabs"][number]): Partial<PlotData>[] => {
-                return Object.entries(data).map(([keyValue, entry]) => {
-                    const setting = settings[keyValue];
-                    // visibleKeysがあれば、それに含まれるkeyのみvisible
-                    const isVisible = visibleKeys
-                        ? visibleKeys.includes(keyValue)
-                        : setting?.visible;
+            (tab: tabData): Partial<PlotData>[] => {
+                return Object.entries(data).map(([key, entry]) => {
+                    const setting = settings[key];
+                    const isVisible = visibleKeys ? visibleKeys.includes(key) : setting?.visible;
 
                     return {
                         x: entry[tab.xKey] ?? [],
                         y: entry[tab.yKey] ?? [],
                         type: "scatter" as const,
                         mode: setting?.mode || "lines+markers",
-                        marker:{ color: setting?.color, symbol: setting?.markerSymbol },
-                        name: `${keyValue}${unitLabel}`,
+                        marker: { color: setting?.color, symbol: setting?.markerSymbol },
+                        name: `${key}${unitLabel}`,
                         visible: isVisible && setting?.visible ? true : "legendonly",
                     };
                 });
             },
-            [data, settings, visibleKeys]
+            [data, settings, visibleKeys, unitLabel]
         );
 
-        // 設定変更ハンドラ
-        const handleSettingChange = (
-            curveKey: string,
-            field: keyof TESASetting,
-            value: any
-        ) => {
-            setSettings((prev) => ({
+        const handleSettingChange = (curveKey: string, field: keyof TESASetting, value: any) => {
+            setSettings(prev => ({
                 ...prev,
-                [curveKey]: {
-                    ...prev[curveKey],
-                    [field]: value,
-                },
+                [curveKey]: { ...prev[curveKey], [field]: value }
             }));
         };
 
-        function CustomSidebarTrigger(){
-
-            const { toggleSidebar } = useSidebar()
-            const handleForceRedraw = () => {
-                toggleSidebar()
-            }
-            return (
-                <Menu onClick={handleForceRedraw}/>
-            )
+        function CustomSidebarTrigger() {
+            const { toggleSidebar } = useSidebar();
+            return <Menu onClick={toggleSidebar} />;
         }
 
         return (
             <SidebarProvider>
-            <div className="flex w-full h-full relative">
-                <PrintModal
-                    isOpen={printModalOpen}
-                    onClose={() => setPrintModalOpen(false)}
-                    graphRef={innerGraphRefs.current[selectedTab]}
-                />
+                <div className="flex w-full h-full relative">
+                    <PrintModal
+                        isOpen={printModalOpen}
+                        onClose={() => setPrintModalOpen(false)}
+                        graphRef={innerGraphRefs.current[selectedTab]}
+                    />
 
-                {/* グラフとタブ */}
-                <div className="flex-grow flex flex-col">
-                    <TabGroup
-                        selectedIndex={tabs.findIndex((t) => t.label === selectedTab)}
-                        onChange={(i) => setSelectedTab(tabs[i].label)}
-                        className="min-h-0 h-full"
-                    >
-
-                            <TabList id="tabList" className="relative flex justify-center border-b border-gray-400 px-2">
+                    <div className="flex-grow flex flex-col">
+                        <TabGroup
+                            selectedIndex={tabs.findIndex((t) => t.label === selectedTab)}
+                            onChange={(i) => setSelectedTab(tabs[i].label)}
+                            className="min-h-0 h-full"
+                        >
+                            <TabList className="relative flex justify-center border-b border-gray-400 px-2">
                                 {tabs.map((tab) => (
                                     <Tab
                                         key={tab.label}
                                         className={({ selected }) =>
                                             `px-4 py-2 cursor-pointer ${
-                                                selected
-                                                    ? "border-b-2 border-blue-500 font-bold"
-                                                    : "text-gray-400"
+                                                selected ? "border-b-2 border-blue-500 font-bold" : "text-gray-400"
                                             }`
                                         }
                                     >
@@ -225,44 +201,38 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                 </button>
                             </TabList>
 
-                            <TabPanels id="tabPanels" className="relative flex-grow min-h-0 h-full">
+                            <TabPanels className="relative flex-grow min-h-0 h-full">
                                 {tabs.map((tab) => (
-
                                     <TabPanel key={tab.label} className="flex h-full overflow-hidden" unmount={false}>
+                                        <TESASidebar
+                                            currentTab={tab.label}
+                                            titles={titles}
+                                            setTitles={setTitles}
+                                            fontSizes={fontSizes}
+                                            setFontSizes={setFontSizes}
+                                            data={data}
+                                            settings={settings}
+                                            handleSettingChange={handleSettingChange}
+                                        />
 
-                                            <TESASidebar
-                                                titles={titles}
-                                                currentTab={tab.label}
-                                                setTitles={setTitles}
-                                                data={data}
-                                                settings={settings}
-                                                handleSettingChange={handleSettingChange}
+                                        <div className="flex-grow h-full ml-2">
+                                            <TESGraph
+                                                ref={innerGraphRefs.current[tab.label]}
+                                                data={createPlotData(tab)}
+                                                layout={{
+                                                    title: { text: titles[tab.label].main, font: { size: fontSizes[tab.label].main } },
+                                                    xaxis: { title: { text: titles[tab.label].xaxis, font: { size: fontSizes[tab.label].xaxis } } },
+                                                    yaxis: { title: { text: titles[tab.label].yaxis, font: { size: fontSizes[tab.label].yaxis } } },
+                                                }}
+                                                {...restProps}
                                             />
-
-                                            {/* グラフ領域：横伸び */}
-                                            <div className="flex-grow h-full ml-2">
-                                                    <TESGraph
-                                                        ref={innerGraphRefs.current[tab.label]}
-                                                        data={createPlotData(tab)}
-                                                        layout={{
-                                                            title: { text: titles[tab.label].main },
-                                                            xaxis: { title: { text: titles[tab.label].xaxis } },
-                                                            yaxis: { title: { text: titles[tab.label].yaxis } },
-                                                        }}
-                                                        {...restProps}
-                                                    />
-
-                                            </div>
-
+                                        </div>
                                     </TabPanel>
-
-                                    //</TESASidebar>
                                 ))}
                             </TabPanels>
-
-                    </TabGroup>
+                        </TabGroup>
+                    </div>
                 </div>
-            </div>
             </SidebarProvider>
         );
     }

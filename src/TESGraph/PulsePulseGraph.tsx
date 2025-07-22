@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import TESGraph,{TESGraphRef} from "@/TESGraph/TESGraph.tsx";
+import TESGraph, { TESGraphRef } from "@/TESGraph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/sidebar.tsx";
 import { invoke } from "@tauri-apps/api/core";
 import { PlotData } from "plotly.js";
-import {Checkbox} from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Slider } from "@/components/ui/slider";  // shadcn slider
 
 type PulseAnalysisResult = {
     Time: number[];
@@ -49,13 +50,19 @@ export interface PulsePulseProps {
     tabId: string;
     channel: string;
     pulseIndex: string;
-    pulseConfigVer:number;
+    pulseConfigVer: number;
     graphRef: React.RefObject<TESGraphRef>;
 }
 
-export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRef}: PulsePulseProps) {
+export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRef }: PulsePulseProps) {
     const [titles, setTitles] = useState({
         Pulse: { main: "Pulse Graph", xaxis: "Time", yaxis: "Amplitude" },
+    });
+
+    const [titleFontSizes, setTitleFontSizes] = useState({
+        main: 16,
+        xaxis: 12,
+        yaxis: 12,
     });
 
     const [traceSettings, setTraceSettings] = useState<Record<string, { visible: boolean; color: string }>>({
@@ -85,7 +92,7 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
             }
         };
         fetchData();
-    }, [channel, pulseIndex,pulseConfigVer]);
+    }, [channel, pulseIndex, pulseConfigVer]);
 
     const plotData: Partial<PlotData>[] = [];
 
@@ -108,24 +115,6 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
             mode: "lines",
             name: "Filtered Pulse",
             marker: { color: traceSettings.FilteredPulse.color },
-        });
-    }
-
-    if (analysis?.PIH && traceSettings.RiseRegion.visible) {
-        plotData.push({
-            x: [
-                analysis.Time[analysis.PIH.RiseLowIndex],
-                analysis.Time[analysis.PIH.RiseHighIndex],
-                analysis.Time[analysis.PIH.RiseHighIndex],
-                analysis.Time[analysis.PIH.RiseLowIndex],
-                analysis.Time[analysis.PIH.RiseLowIndex]
-            ],
-            y: [0, 0, 1, 1, 0],
-            type: "scatter",
-            fill: "toself",
-            fillcolor: traceSettings.RiseRegion.color,
-            line: { width: 0 },
-            name: "Rise Region",
         });
     }
 
@@ -183,6 +172,24 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
         });
     }
 
+    if (analysis?.PIH && traceSettings.RiseRegion.visible) {
+        plotData.push({
+            x: [
+                analysis.Time[analysis.PIH.RiseLowIndex],
+                analysis.Time[analysis.PIH.RiseHighIndex],
+                analysis.Time[analysis.PIH.RiseHighIndex],
+                analysis.Time[analysis.PIH.RiseLowIndex],
+                analysis.Time[analysis.PIH.RiseLowIndex]
+            ],
+            y: [0, 0, 1, 1, 0],
+            type: "scatter",
+            fill: "toself",
+            fillcolor: traceSettings.RiseRegion.color,
+            line: { width: 0 },
+            name: "Rise Region",
+        });
+    }
+
     if (analysis?.PI && traceSettings.Peak.visible) {
         plotData.push({
             x: [analysis.Time[analysis.PI.PeakIndex]],
@@ -195,9 +202,9 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
     }
 
     const layout = {
-        title: { text: titles.Pulse.main },
-        xaxis: { title: { text: titles.Pulse.xaxis } },
-        yaxis: { title: { text: titles.Pulse.yaxis } },
+        title: { text: titles.Pulse.main, font: { size: titleFontSizes.main } },
+        xaxis: { title: { text: titles.Pulse.xaxis, font: { size: titleFontSizes.xaxis } } },
+        yaxis: { title: { text: titles.Pulse.yaxis, font: { size: titleFontSizes.yaxis } } },
         bargap: 0.05,
     };
 
@@ -207,30 +214,65 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
                 <Sidebar side="left" className="bg-white text-gray-900">
                     <SidebarContent>
                         {/* タイトル設定 */}
+                        {/* タイトル設定 */}
                         <SidebarGroup>
                             <SidebarGroupLabel className="text-sm font-semibold mb-2">タイトル設定</SidebarGroupLabel>
-                            <SidebarGroupContent>
-                                <div className="space-y-3 text-xs">
-                                    {["main", "xaxis", "yaxis"].map((field) => (
-                                        <div key={field}>
-                                            <label className="block mb-1 capitalize">
-                                                {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
-                                            </label>
-                                            <input
-                                                className="w-40 border rounded px-2 py-1 text-sm leading-5"
-                                                value={titles.Pulse[field as keyof typeof titles.Pulse]}
-                                                onChange={(e) =>
-                                                    setTitles((prev) => ({
+                            <SidebarGroupContent className="space-y-6 text-xs">
+                                {["main", "xaxis", "yaxis"].map((field) => (
+                                    <div key={field}>
+                                        <label className="block mb-1 capitalize">
+                                            {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
+                                        </label>
+                                        {/* タイトルテキスト入力 */}
+                                        <input
+                                            className="w-40 border rounded px-2 py-1 text-sm leading-5 mb-2"
+                                            value={titles.Pulse[field as keyof typeof titles.Pulse]}
+                                            onChange={(e) =>
+                                                setTitles((prev) => ({
+                                                    ...prev,
+                                                    Pulse: { ...prev.Pulse, [field]: e.target.value },
+                                                }))
+                                            }
+                                        />
+                                        {/* フォントサイズスライダー＆数値入力 */}
+                                        <div className="flex items-center space-x-2">
+                                            <Slider
+                                                value={[titleFontSizes[field as keyof typeof titleFontSizes]]}
+                                                min={8}
+                                                max={40}
+                                                step={1}
+                                                onValueChange={(values) =>
+                                                    setTitleFontSizes((prev) => ({
                                                         ...prev,
-                                                        Pulse: { ...prev.Pulse, [field]: e.target.value },
+                                                        [field]: values[0],
                                                     }))
                                                 }
+                                                className="flex-1"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={titleFontSizes[field as keyof typeof titleFontSizes]}
+                                                min={8}
+                                                max={40}
+                                                onChange={(e) => {
+                                                    const val = Number(e.target.value);
+                                                    if (!isNaN(val) && val >= 8 && val <= 40) {
+                                                        setTitleFontSizes((prev) => ({
+                                                            ...prev,
+                                                            [field]: val,
+                                                        }));
+                                                    }
+                                                }}
+                                                className="w-14 border px-1 py-0.5 text-xs text-center"
                                             />
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
                             </SidebarGroupContent>
                         </SidebarGroup>
+
+
+                        
 
                         {/* トレース設定 */}
                         <SidebarGroup>
@@ -240,7 +282,7 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
                                     <div key={key} className="flex items-center gap-3 mb-3 text-xs">
                                         <Checkbox
                                             checked={setting.visible}
-                                            onChange={(checked) =>
+                                            onCheckedChange={(checked) =>
                                                 setTraceSettings((prev) => ({
                                                     ...prev,
                                                     [key]: { ...prev[key], visible: !!checked },
@@ -270,9 +312,8 @@ export function PulsePulse({ tabId, pulseIndex, channel , pulseConfigVer,graphRe
                     </SidebarContent>
                 </Sidebar>
 
-
                 <div className="flex-grow">
-                    <TESGraph data={plotData} layout={layout} ref={graphRef}/>
+                    <TESGraph data={plotData} layout={layout} ref={graphRef} />
                 </div>
             </div>
         </SidebarProvider>

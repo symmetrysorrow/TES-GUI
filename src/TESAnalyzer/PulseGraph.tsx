@@ -114,6 +114,35 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
         }
     };
 
+    useEffect(() => {
+        if (pulseData) {
+            const firstChannel = Object.keys(pulseData)[0];
+            const firstPulseIndex = pulseData[firstChannel] ? Object.keys(pulseData[firstChannel])[0] : "";
+
+            setSettings({
+                pulse: {
+                    channel: firstChannel,
+                    pulseIndex: firstPulseIndex
+                },
+                histogram: {
+                    channel: firstChannel,
+                    field: "Base",
+                    binNum: 30
+                },
+                scatter2d: {
+                    xChannel: firstChannel,
+                    xField: "Base",
+                    yChannel: firstChannel,
+                    yField: "PeakAverage"
+                }
+            });
+
+            // 初期表示したいタブも設定（例: pulse）
+            setActiveTab("pulse");
+        }
+    }, [pulseData]);
+
+
     return (
         <div className="flex flex-col h-full">
             <PrintModal

@@ -272,7 +272,7 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                         </SidebarGroup>
 
 
-                        
+
 
                         {/* トレース設定 */}
                         <SidebarGroup>

@@ -14,6 +14,20 @@ import PrintModal from "@/TESGraph/TESGraphModal.tsx";
 import { TESASidebar } from "@/TESGraph/TESASidebar.tsx";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar.tsx";
 
+const fixedColors = [
+    "#1f77b4", // matplotlibのblue
+    "#ff7f0e", // orange
+    "#2ca02c", // green
+    "#d62728", // red
+    "#9467bd", // purple
+    "#8c564b", // brown
+    "#e377c2", // pink
+    "#7f7f7f", // gray
+    "#bcbd22", // olive
+    "#17becf", // cyan
+];
+
+
 export interface TESAData {
     [curveKey: string]: {
         [dataKey: string]: number[];
@@ -69,16 +83,17 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
         );
 
         const [settings, setSettings] = useState<Record<string, TESASetting>>(() =>
-            Object.keys(data).reduce((acc, key) => {
+            Object.keys(data).reduce((acc, key, index) => {
                 acc[key] = {
                     visible: true,
-                    color: "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0"),
+                    color: fixedColors[index % fixedColors.length], // これで固定順に色が割り当てられます
                     mode: "lines+markers",
                     markerSymbol: "circle",
                 };
                 return acc;
             }, {} as Record<string, TESASetting>)
         );
+
 
         const [titles, setTitles] = useState(
             tabs.reduce((acc, tab) => {
@@ -102,12 +117,14 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
         useEffect(() => {
             if (data) {
                 setSettings(prev => {
+                    // すでに色設定されてるキーは残す
                     const newSettings = { ...prev };
-                    Object.keys(data).forEach(key => {
+                    const keys = Object.keys(data).sort(); // キー順固定
+                    keys.forEach((key, index) => {
                         if (!newSettings[key]) {
                             newSettings[key] = {
                                 visible: true,
-                                color: "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, "0"),
+                                color: fixedColors[index % fixedColors.length],
                                 mode: "lines+markers",
                                 markerSymbol: "circle",
                             };
@@ -117,6 +134,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                 });
             }
         }, [data]);
+
 
         useImperativeHandle(ref, () => ({
             exportImage: async (options) => {
@@ -150,7 +168,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             [data, settings, visibleKeys, unitLabel]
         );
 
-        const handleSettingChange = (curveKey: string, field: keyof TESASetting, value: any) => {
+        const handleSettingChange = (curveKey: string, field: string, value: any) => {
             setSettings(prev => ({
                 ...prev,
                 [curveKey]: { ...prev[curveKey], [field]: value }

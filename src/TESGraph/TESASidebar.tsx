@@ -45,7 +45,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                 </label>
                                 <input
                                     className="w-40 border rounded px-2 py-1 text-sm leading-5"
-                                    value={titles[currentTab][field as keyof typeof titles[currentTab]]}
+                                    value={titles[currentTab][field as keyof (typeof titles)[string]]}
                                     onChange={(e) =>
                                         setTitles((prev) => ({
                                             ...prev,
@@ -69,7 +69,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                 </label>
                                 <div className="flex items-center gap-2">
                                     <Slider
-                                        value={[fontSizes[currentTab][field as keyof typeof fontSizes[currentTab]]]}
+                                        value={[fontSizes[currentTab][field as keyof (typeof fontSizes)[string]]]}
                                         min={8}
                                         max={40}
                                         step={1}
@@ -84,7 +84,7 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                     <input
                                         type="number"
                                         className="w-12 border px-1 py-0.5 text-xs text-center"
-                                        value={fontSizes[currentTab][field as keyof typeof fontSizes[currentTab]]}
+                                        value={titles[currentTab][field as keyof (typeof titles)[string]]}
                                         onChange={(e) => {
                                             const val = Number(e.target.value);
                                             if (!isNaN(val)) {

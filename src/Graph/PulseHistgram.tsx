@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TESGraph, { TESGraphRef } from "@/TESGraph/TESGraph.tsx";
+import TESGraph, { TESGraphRef } from "@/Graph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -44,7 +44,6 @@ const HistogramSidebar: React.FC<HistogramSidebarProps> = ({
         <Sidebar side="left" collapsible="none">
             <SidebarContent>
 
-                {/* タイトル設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel>タイトル設定</SidebarGroupLabel>
                     <SidebarGroupContent>
@@ -94,7 +93,6 @@ const HistogramSidebar: React.FC<HistogramSidebarProps> = ({
                     </SidebarGroupContent>
                 </SidebarGroup>
 
-                {/* 表示設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel>表示設定</SidebarGroupLabel>
                     <SidebarGroupContent>

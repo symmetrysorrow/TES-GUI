@@ -26,7 +26,7 @@ type Props = { tabId: string ,onConfigChange: () => void };
 export default function PulseConfig({ tabId,onConfigChange }: Props) {
     const [config, setConfig] = useState<ConfigType | null>(null);
 
-    // 初回ロード
+    // Load configuration when the component mounts
     useEffect(() => {
         const loadConfig = async () => {
             try {
@@ -39,7 +39,7 @@ export default function PulseConfig({ tabId,onConfigChange }: Props) {
         loadConfig();
     }, [tabId]);
 
-    // 値変更時に保存
+    // Update a specific field in the configuration
     const updateField = (section: keyof ConfigType, key: string, value: number) => {
         if (!config) return;
         const updated = {

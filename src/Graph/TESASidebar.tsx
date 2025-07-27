@@ -15,7 +15,7 @@ type TESASidebarProps = {
     setTitles: React.Dispatch<React.SetStateAction<Record<string, { main: string; xaxis: string; yaxis: string }>>>;
     fontSizes: Record<string, { main: number; xaxis: number; yaxis: number }>;
     setFontSizes: React.Dispatch<React.SetStateAction<Record<string, { main: number; xaxis: number; yaxis: number }>>>;
-    data: Record<string, any>; // カーブデータ
+    data: Record<string, any>;
     settings: Record<string, { visible: boolean; color: string; mode: string; markerSymbol: string }>;
     handleSettingChange: (curveKey: string, field: string, value: any) => void;
 };
@@ -42,7 +42,6 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                 <label className="block mb-1 capitalize">
                                     {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
                                 </label>
-                                {/* タイトル文字 input */}
                                 <input
                                     className="w-full border rounded px-2 py-1 text-sm leading-5 mb-1"
                                     value={titles[currentTab][field as keyof (typeof titles)[string]]}
@@ -53,7 +52,6 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                                         }))
                                     }
                                 />
-                                {/* フォントサイズ */}
                                 <div className="flex items-center gap-2">
                                     <Slider
                                         value={[fontSizes[currentTab][field as keyof (typeof fontSizes)[string]]]}
@@ -88,8 +86,6 @@ export const TESASidebar: React.FC<TESASidebarProps> = ({
                     </SidebarGroupContent>
                 </SidebarGroup>
 
-
-                {/* カーブ設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel className="text-sm font-semibold mb-2">カーブ設定</SidebarGroupLabel>
                     <SidebarGroupContent className="space-y-2 text-xs">

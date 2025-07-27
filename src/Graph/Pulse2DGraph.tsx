@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import TESGraph, { TESGraphRef } from "@/TESGraph/TESGraph.tsx";
+import TESGraph, { TESGraphRef } from "@/Graph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -40,7 +40,6 @@ const Pulse2DSidebar: React.FC<Pulse2DSidebarProps> = ({
         <Sidebar side="left"  collapsible="none">
             <SidebarContent>
 
-                {/* タイトル設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel>タイトル設定</SidebarGroupLabel>
                     <SidebarGroupContent>
@@ -90,7 +89,6 @@ const Pulse2DSidebar: React.FC<Pulse2DSidebarProps> = ({
                     </SidebarGroupContent>
                 </SidebarGroup>
 
-                {/* 表示設定 */}
                 <SidebarGroup>
                     <SidebarGroupLabel>表示設定</SidebarGroupLabel>
                     <SidebarGroupContent>

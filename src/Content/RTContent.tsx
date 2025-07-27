@@ -1,14 +1,14 @@
 import  {useEffect, useRef, useState} from "react";
-import TESAGraph, { TESAData } from "@/TESGraph/TESAGraph.tsx";
+import TESAGraph, { TESAData } from "@/Graph/TESAGraph.tsx";
 import {invoke} from "@tauri-apps/api/core";
-import {TESGraphRef} from "@/TESGraph/TESGraph.tsx";
+import {TESGraphRef} from "@/Graph/TESGraph.tsx";
 
 const rtTabs = [
     { label: "RT", xKey: "Temp", yKey: "R_tes", defaultTitle: "RT", defaultXaxis: "$Temp[mK]$", defaultYaxis: "$R_{tes}[\\Omega]$" },
     { label: "Alpha", xKey: "BiasPoint", yKey: "Alpha", defaultTitle: "Alpha", defaultXaxis: "$Bias Point$", defaultYaxis: "$\\alpha$" },
 ];
 
-const RTGraph = ({ tabId }: { tabId: string }) => {
+const RTContent = ({ tabId }: { tabId: string }) => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -64,4 +64,4 @@ const RTGraph = ({ tabId }: { tabId: string }) => {
 
 };
 
-export default RTGraph;
+export default RTContent;

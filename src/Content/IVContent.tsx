@@ -1,7 +1,7 @@
 import  {useEffect, useRef, useState} from "react";
-import TESAGraph, { TESAData } from "@/TESGraph/TESAGraph.tsx";
+import TESAGraph, { TESAData } from "@/Graph/TESAGraph.tsx";
 import {invoke} from "@tauri-apps/api/core";
-import {TESGraphRef} from "@/TESGraph/TESGraph.tsx";
+import {TESGraphRef} from "@/Graph/TESGraph.tsx";
 import {Shape} from "plotly.js"; // TESAGraph本体のimport想定
 import {Button,Description, Dialog, DialogPanel, DialogTitle} from '@headlessui/react'
 
@@ -10,7 +10,7 @@ const ivTabs = [
     { id: "IR", label: "IR", xKey: "I_bias", yKey: "R_tes", defaultTitle: "IR Title", defaultXaxis: "$I_{bias}$", defaultYaxis: "$R_{tes}$" },
 ];
 
-const IVGraph = ({ tabId }: { tabId: string }) => {
+const IVContent = ({ tabId }: { tabId: string }) => {
     const [ivSelecting, setIVSelecting] = useState(false);
     const [ivSelectedRange, setIVSelectedRange] = useState<[number, number] | null>(null);
     const [ivSelectedKeyValue, setIVSelectedKeyValue] = useState<string | null>(null);
@@ -18,9 +18,7 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
     const [ivModalOpen, setIVModalOpen] = useState(false);
 
     const [isLoading, setIsLoading] = useState(true);
-
     const [IVData, setIVData] = useState<TESAData | null>(null);
-    //const safeData: TESAData = IVData ?? defaultData;
 
     const graphRef = useRef<TESGraphRef>(null);
 
@@ -45,7 +43,6 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
     }, [ivModalOpen]);
 
 
-    // モーダルの確定処理
     const handleIVModalConfirm = (selectedKey: string) => {
         setIVSelectedKeyValue(selectedKey);
         setIVSelecting(true);
@@ -53,19 +50,16 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
         setIVModalOpen(false);
     };
 
-    // モーダルのキャンセル処理
     const handleIVModalCancel = () => {
         setIVModalOpen(false);
     };
 
-    // 範囲選択イベントハンドラ
     const handleSelected = (event: any) => {
         if (event?.range?.x) {
             setIVSelectedRange([event.range.x[0], event.range.x[1]]);
         }
     };
 
-    // 範囲確定ボタン
     const confirmIVSelect = () => {
         if (ivSelectedRange && ivSelectedKeyValue) {
             console.log("Selected Range:", {
@@ -113,7 +107,6 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
         } as Shape]
         : [];
 
-    // TESAGraphへのprops
     const graphProps = {
         data: IVData??{},
         tabs: ivTabs,
@@ -128,14 +121,12 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
     return (
         <div className="h-full flex flex-col">
             {isLoading ? (
-                // Loading 表示
                 <div className="flex flex-1 flex-col items-center justify-center text-black text-xl">
                     <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin mb-4"></div>
                     Loading...
                 </div>
             ) : (
                 <>
-                    {/* モーダル */}
                     <Dialog
                         open={ivModalOpen}
                         as="div"
@@ -195,7 +186,6 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                         </div>
                     </Dialog>
 
-                    {/* TESAGraph */}
                     <div className="relative flex-1 min-h-0">
                         <TESAGraph
                             ref={graphRef}
@@ -208,7 +198,6 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
                         />
                     </div>
 
-                    {/* TESAGraph の真下・右寄せにボタン */}
                     <div className="absolute bottom-2 right-2 flex gap-2 z-11">
                         {!ivSelecting && (
                             <Button
@@ -238,4 +227,4 @@ const IVGraph = ({ tabId }: { tabId: string }) => {
 };
 
 
-export default IVGraph;
+export default IVContent;

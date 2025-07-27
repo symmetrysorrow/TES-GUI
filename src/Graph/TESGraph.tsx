@@ -79,7 +79,7 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
             }
         }));
 
-        // useEffectでイベント登録・解除
+        // Mouse drag to pan functionality
         useEffect(() => {
             const plotEl = plotRef.current;
             if (!plotEl) return;
@@ -159,14 +159,14 @@ const TESGraph = forwardRef<TESGraphRef, TESGraphProps>(
                 window.removeEventListener("mousemove", handleMouseMove);
                 window.removeEventListener("mouseup", handleMouseUp);
             };
-        }, [data, layout, shapes]); // dataやlayoutが変わったら再登録される
+        }, [data, layout, shapes]);
 
         useEffect(() => {
             if (!plotRef.current) return;
             const resizeObserver = new ResizeObserver(() => {
                 window.Plotly.Plots.resize(plotRef.current);
             });
-            resizeObserver.observe(plotRef.current.parentElement); // 親要素を監視
+            resizeObserver.observe(plotRef.current.parentElement);
 
             return () => resizeObserver.disconnect();
         }, []);

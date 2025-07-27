@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import TESGraph, { TESGraphRef } from "@/TESGraph/TESGraph.tsx";
+import TESGraph, { TESGraphRef } from "@/Graph/TESGraph.tsx";
 import {
     Sidebar,
     SidebarContent,
@@ -77,6 +77,7 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
 
     const [analysis, setAnalysis] = useState<PulseAnalysisResult | null>(null);
 
+    //Update the graph when the pulse index ,channel or setting changes
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -219,8 +220,6 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
             <div className="flex h-full w-full">
                 <Sidebar side="left" className="bg-white text-gray-900"  collapsible="none">
                     <SidebarContent>
-                        {/* タイトル設定 */}
-                        {/* タイトル設定 */}
                         <SidebarGroup>
                             <SidebarGroupLabel className="text-sm font-semibold mb-2">タイトル設定</SidebarGroupLabel>
                             <SidebarGroupContent className="space-y-6 text-xs">
@@ -229,7 +228,6 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                                         <label className="block mb-1 capitalize">
                                             {field === "main" ? "タイトル" : field === "xaxis" ? "X軸" : "Y軸"}
                                         </label>
-                                        {/* タイトルテキスト入力 */}
                                         <input
                                             className="w-40 border rounded px-2 py-1 text-sm leading-5 mb-2"
                                             value={titles.Pulse[field as keyof typeof titles.Pulse]}
@@ -240,7 +238,6 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                                                 }))
                                             }
                                         />
-                                        {/* フォントサイズスライダー＆数値入力 */}
                                         <div className="flex items-center space-x-2">
                                             <Slider
                                                 value={[titleFontSizes[field as keyof typeof titleFontSizes]]}
@@ -277,10 +274,6 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
                             </SidebarGroupContent>
                         </SidebarGroup>
 
-
-
-
-                        {/* トレース設定 */}
                         <SidebarGroup>
                             <SidebarGroupLabel className="text-sm font-semibold mt-6 mb-2">トレース設定</SidebarGroupLabel>
                             <SidebarGroupContent>

@@ -1,15 +1,15 @@
 import { useEffect, useState,useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { PulseHistogram } from "@/TESGraph/PulseHistgram";
+import { PulseHistogram } from "@/Graph/PulseHistgram";
 import {Popover, PopoverContent, PopoverTrigger} from "@/components/ui/popover.tsx";
-import Pulse2DGraph from "@/TESGraph/Pulse2DGraph.tsx";
-import PulsePulse from "@/TESGraph/PulsePulseGraph.tsx";
-import PulseConfig from "@/TESAnalyzer/PulseConfig.tsx";
+import Pulse2DGraph from "@/Graph/Pulse2DGraph.tsx";
+import PulsePulse from "@/Graph/PulsePulseGraph.tsx";
+import PulseConfig from "@/Graph/PulseConfig.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {Progress} from "@/components/ui/progress.tsx";
-import { TESGraphRef } from "@/TESGraph/TESGraph";
-import PrintModal from "@/TESGraph/TESGraphModal.tsx";
+import { TESGraphRef } from "@/Graph/TESGraph";
+import PrintModal from "@/Graph/TESGraphModal.tsx";
 import {RefreshCw, Settings} from "lucide-react";
 
 // 型定義はそのままでOK
@@ -23,7 +23,7 @@ type TabSettings = {
     scatter2d?: { xChannel: string; xField: string; yChannel: string; yField: string; };
 };
 
-export const PulseGraph = ({ tabId }: { tabId: string }) => {
+export const PulseContent = ({ tabId }: { tabId: string }) => {
     const graphRef = useRef<TESGraphRef>(null);
 
     const [status, setStatus] = useState<ScreenStatus>("Loading");
@@ -47,7 +47,7 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
         { key: "2d", label: "2D散布図" },
     ];
 
-    // 初期ロード
+    //Load pulseData on mount
     useEffect(() => {
         const init = async () => {
             setStatus("Loading");
@@ -70,6 +70,7 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
 
     }, [tabId]);
 
+    // Reset pre-result and re-analyze
     const resetPreresult = async () => {
         try {
             await invoke("ResetPreResultCommand", { tabName: tabId });
@@ -83,7 +84,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
         }
     }
 
-    // 解析開始
     const startAnalyzeFolder = async () => {
         setStatus("Analyzing");
         setProgress(0);
@@ -112,6 +112,7 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
         }
     };
 
+    //Apply initial settings when pulseData is loaded
     useEffect(() => {
         if (pulseData) {
             const firstChannel = Object.keys(pulseData)[0];
@@ -135,7 +136,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
                 }
             });
 
-            // 初期表示したいタブも設定（例: pulse）
             setActiveTab("pulse");
         }
     }, [pulseData]);
@@ -143,7 +143,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
 
     return (
         <div className="flex flex-col h-full">
-            {/* 状態表示 */}
             {status === "Loading" &&
                 (<div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50">
                     <div className="flex flex-col items-center">
@@ -154,7 +153,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
             }
             {status === "Ready" && (
                 <div className="flex flex-col md:flex-row items-center justify-center gap-6 p-6">
-                    {/* 解析開始ボタンカード */}
                     <div className="bg-white shadow-lg rounded-xl p-6 flex flex-col items-center justify-center">
                         <h2 className="text-lg font-semibold mb-4">解析の開始</h2>
                         <Button
@@ -177,13 +175,10 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
 
                 <div className="fixed inset-0 flex items-center justify-center bg-white/70 z-50">
                     <div className="flex flex-col items-center bg-white rounded-2xl shadow-xl p-6 w-80 space-y-4">
-                        {/* ローディングスピナー */}
                         <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-500 border-solid"></div>
 
-                        {/* タイトル */}
                         <div className="text-xl font-semibold text-gray-800">解析中...</div>
 
-                        {/* パルス進捗 */}
                         <div className="w-full">
                             <div className="flex justify-between text-xs text-gray-600 mb-1">
                                 <span>パルス: {progress}%</span>
@@ -191,7 +186,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
                             <Progress value={progress} />
                         </div>
 
-                        {/* チャンネル進捗 */}
                         <div className="w-full">
                             <div className="flex justify-between text-xs text-gray-600 mb-1">
                                 <span>チャンネル: {channelsDone}/{totalChannels}</span>
@@ -205,10 +199,8 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
 
             {status === "Finished" && (
                 <>
-                    {/* タブ（Popover付き） */}
                     <div className="flex border-b justify-center relative">
 
-                        {/* タブグループ（中央寄せ） */}
                         <div className="flex space-x-2">
                             {tabs.map(tab => {
                             const isActive = activeTab === tab.key;
@@ -477,7 +469,6 @@ export const PulseGraph = ({ tabId }: { tabId: string }) => {
 
                     </div>
 
-                    {/* パネル */}
                     <div className="flex-1 relative overflow-auto" id={"Panel"}>
                         {activeTab === "histogram" && settings.histogram && (
 

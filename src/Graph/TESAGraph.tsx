@@ -10,12 +10,12 @@ import TESGraph, {TESGraphProps, TESGraphRef} from "./TESGraph";
 import { PlotData } from "plotly.js";
 import {Tab, TabGroup, TabList, TabPanels, TabPanel} from "@headlessui/react";
 import { Menu, } from "lucide-react";
-import PrintModal from "@/TESGraph/TESGraphModal.tsx";
-import { TESASidebar } from "@/TESGraph/TESASidebar.tsx";
+import PrintModal from "@/Graph/TESGraphModal.tsx";
+import { TESASidebar } from "@/Graph/TESASidebar.tsx";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar.tsx";
 
 const fixedColors = [
-    "#1f77b4", // matplotlibのblue
+    "#1f77b4", // blue
     "#ff7f0e", // orange
     "#2ca02c", // green
     "#d62728", // red
@@ -81,6 +81,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }, {} as Record<string, React.RefObject<TESGraphRef>>)
         );
 
+        //config for settings
         const [settings, setSettings] = useState<Record<string, TESASetting>>(() =>
             Object.keys(data).reduce((acc, key, index) => {
                 acc[key] = {
@@ -93,7 +94,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }, {} as Record<string, TESASetting>)
         );
 
-
+        // config for titles
         const [titles, setTitles] = useState(
             tabs.reduce((acc, tab) => {
                 acc[tab.label] = {
@@ -105,7 +106,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }, {} as Record<string, { main: string; xaxis: string; yaxis: string }>)
         );
 
-        // フォントサイズ：タブごとに管理
+        // config for font sizes
         const [fontSizes, setFontSizes] = useState<Record<string, { main: number; xaxis: number; yaxis: number }>>(
             tabs.reduce((acc, tab) => {
                 acc[tab.label] = { main: 16, xaxis: 14, yaxis: 14 };
@@ -113,12 +114,12 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }, {} as Record<string, { main: number; xaxis: number; yaxis: number }>)
         );
 
+        //Apply settings when data changes
         useEffect(() => {
             if (data) {
                 setSettings(prev => {
-                    // すでに色設定されてるキーは残す
                     const newSettings = { ...prev };
-                    const keys = Object.keys(data).sort(); // キー順固定
+                    const keys = Object.keys(data).sort();
                     keys.forEach((key, index) => {
                         if (!newSettings[key]) {
                             newSettings[key] = {
@@ -134,7 +135,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }
         }, [data]);
 
-
+        // Expose methods to parent component
         useImperativeHandle(ref, () => ({
             exportImage: async (options) => {
                 const currentRef = innerGraphRefs.current[selectedTab];
@@ -147,6 +148,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
             }
         }));
 
+        // Create plot data based on current tab and settings
         const createPlotData = useCallback(
             (tab: tabData): Partial<PlotData>[] => {
                 return Object.entries(data).map(([key, entry]) => {

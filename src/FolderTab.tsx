@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button.tsx";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import IVGraph from "@/TESAnalyzer/IVGraph.tsx";
-import RTGraph from "@/TESAnalyzer/RTGraph.tsx";
-import {TargetEnum} from "@/TargetContext.tsx";
-import {PulseGraph} from "@/TESAnalyzer/PulseGraph.tsx";
+import IVContent from "@/Content/IVContent.tsx";
+import RTContent from "@/Content/RTContent.tsx";
+import {PulseContent} from "@/Content/PulseContent.tsx";
+
+enum TargetEnum {
+    IV,RT,Pulse
+}
 
 type TabItem = {
     id: string;
@@ -41,7 +44,6 @@ const DynamicTabs = () => {
         currentTabIdRef.current = currentTabId;
     }, [currentTabId]);
 
-    // 新規タブの中身（フォルダ開くエリア）
     const NewTabContent: React.FC<{ id: string }> = () => (
         <div className="flex flex-col h-full">
             <FolderDropArea>
@@ -52,7 +54,6 @@ const DynamicTabs = () => {
         </div>
     );
 
-    // フォルダドロップ領域
     const FolderDropArea: React.FC<{ children?: ReactNode }> = ({ children }) => {
         const [backgroundClass, setBackgroundClass] = useState("bg-transparent");
         const [message, setMessage] = useState("");
@@ -93,7 +94,6 @@ const DynamicTabs = () => {
         );
     };
 
-    // タブ追加
     const addTab = () => {
         const newId = crypto.randomUUID();
         setTabs((prev) => [
@@ -109,13 +109,11 @@ const DynamicTabs = () => {
         setCurrentTabId(newId);
     };
 
-    // フォルダ開くダイアログ
     const handleDialog = async () => {
         const selected = await open({ directory: true });
         if (selected) await handleOpenFolder(selected as string);
     };
 
-    // フォルダ開く処理
     const handleOpenFolder = async (folderPath: string) => {
         const tabId = currentTabIdRef.current;
         const FolderTitle = getFolderName(folderPath);
@@ -130,15 +128,15 @@ const DynamicTabs = () => {
             switch (folderType) {
                 case "IV":
                     targetType = TargetEnum.IV;
-                    content = () => <IVGraph tabId={tabId} />;
+                    content = () => <IVContent tabId={tabId} />;
                     break;
                 case "RT":
                     targetType = TargetEnum.RT;
-                    content = () => <RTGraph tabId={tabId} />;
+                    content = () => <RTContent tabId={tabId} />;
                     break;
                 case "Pulse":
                     targetType = TargetEnum.Pulse;
-                    content = () => <PulseGraph tabId={tabId} />;
+                    content = () => <PulseContent tabId={tabId} />;
                     break;
             }
 
@@ -160,7 +158,6 @@ const DynamicTabs = () => {
         }
     };
 
-    // タブ削除
     const removeTab = async (id: string) => {
         const tabToRemove = tabs.find((t) => t.id === id);
         if (tabToRemove?.TargetType !== null) {

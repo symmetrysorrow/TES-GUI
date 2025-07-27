@@ -25,7 +25,7 @@ export default function PrintModal({ graphRef }: PrintModalProps) {
         transparent: true,
     });
 
-    // ✅ 開いた時にプレビュー生成
+    //Creaye a ref to store the current export options
     useEffect(() => {
         if (open) {
             const timeout = setTimeout(async () => {
@@ -122,7 +122,6 @@ export default function PrintModal({ graphRef }: PrintModalProps) {
                     </div>
                 </div>
 
-                {/* 🖼 プレビュー */}
                 <div className="flex-1 border max-w-[50vw] rounded bg-gray-50 flex items-center justify-center">
                     {imageUri ? (
                         <img src={imageUri} alt="Preview" className="max-h-full max-w-full" />
@@ -131,7 +130,6 @@ export default function PrintModal({ graphRef }: PrintModalProps) {
                     )}
                 </div>
 
-                {/* 💾 保存 */}
                 <div className="flex justify-end mt-2">
                     <Button size="sm" onClick={handleSave} disabled={!imageUri || saving}>
                         {saving ? "保存中..." : "保存"}

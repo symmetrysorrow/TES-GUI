@@ -59,31 +59,50 @@ const DynamicTabs = () => {
         const [message, setMessage] = useState("");
 
         useEffect(() => {
-            const unlistenDrop = listen("tauri://drag-drop", async (e: any) => {
-                const paths: string[] = e.payload.paths;
-                let opened = false;
-                for (const path of paths) {
-                    try {
-                        await handleOpenFolder(path);
-                        opened = true;
-                        break;
-                    } catch (err) {
-                        console.error("lstat error:", err);
-                    }
+            // unlisten 用の変数を用意
+            let unlistenDrop: (() => void) | null = null;
+            let unlistenEnter: (() => void) | null = null;
+            let unlistenLeave: (() => void) | null = null;
+
+            // 即時実行 async 関数で setup
+            (async () => {
+                try {
+                    unlistenDrop = await listen("tauri://drag-drop", async (e: any) => {
+                        const paths: string[] = e.payload.paths;
+                        let opened = false;
+                        for (const path of paths) {
+                            try {
+                                await handleOpenFolder(path);
+                                opened = true;
+                                break;
+                            } catch (err) {
+                                console.error("lstat error:", err);
+                            }
+                        }
+                        setBackgroundClass("bg-transparent");
+                        setMessage(opened ? "1 件のフォルダを開きました" : "フォルダ以外の項目は無視されました");
+                    });
+
+                    unlistenEnter = await listen("tauri://drag-enter", () => {
+                        setBackgroundClass("bg-amber-200/60");
+                    });
+
+                    unlistenLeave = await listen("tauri://drag-leave", () => {
+                        setBackgroundClass("bg-transparent");
+                    });
+                } catch (error) {
+                    console.error("Failed to set up listeners:", error);
                 }
-                setBackgroundClass("bg-transparent");
-                setMessage(opened ? "1 件のフォルダを開きました" : "フォルダ以外の項目は無視されました");
-            });
+            })();
 
-            const unlistenEnter = listen("tauri://drag-enter", () => setBackgroundClass("bg-amber-200/60"));
-            const unlistenLeave = listen("tauri://drag-leave", () => setBackgroundClass("bg-transparent"));
-
+            // クリーンアップ関数
             return () => {
-                unlistenDrop.then((fn) => fn());
-                unlistenEnter.then((fn) => fn());
-                unlistenLeave.then((fn) => fn());
+                if (unlistenDrop) unlistenDrop();
+                if (unlistenEnter) unlistenEnter();
+                if (unlistenLeave) unlistenLeave();
             };
         }, []);
+
 
         return (
             <div className={`flex flex-col justify-center items-center w-full h-full relative ${backgroundClass}`}>

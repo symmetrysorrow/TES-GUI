@@ -25,7 +25,7 @@ export default function PrintPopover({ graphRef }: PrintPopoverProps) {
         transparent: true,
     });
 
-    //Creaye a ref to store the current export options
+    //Create a ref to store the current export options
     useEffect(() => {
         if (open) {
             const timeout = setTimeout(async () => {
@@ -33,6 +33,7 @@ export default function PrintPopover({ graphRef }: PrintPopoverProps) {
                     try {
                         const uri = await graphRef.current.exportImage(exportOptions);
                         setImageUri(uri);
+                        console.log(uri);
                     } catch (e) {
                         console.error("exportImage error:", e);
                     }
@@ -53,8 +54,8 @@ export default function PrintPopover({ graphRef }: PrintPopoverProps) {
             if (path) {
                 let fileData: Uint8Array;
                 if (exportOptions.format === "svg") {
-                    const svg = imageUri.split(",")[1];
-                    fileData = new TextEncoder().encode(atob(svg));
+                    const svgText = decodeURIComponent(imageUri.split(",")[1]);
+                    fileData = new TextEncoder().encode(svgText);
                 } else {
                     const base64 = imageUri.split(",")[1];
                     const binary = atob(base64);

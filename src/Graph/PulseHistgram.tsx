@@ -44,7 +44,6 @@ const HistogramSidebar: React.FC<HistogramSidebarProps> = ({
     return (
         <Sidebar side="left" collapsible="none">
             <SidebarContent>
-
                 <SidebarGroup>
                     <SidebarGroupLabel>タイトル設定</SidebarGroupLabel>
                     <SidebarGroupContent>
@@ -104,6 +103,7 @@ const HistogramSidebar: React.FC<HistogramSidebarProps> = ({
                             value={color}
                             onChange={(e) => setColor(e.target.value)}
                         />
+
 
                         {/* ビン数 */}
                         <label className="block text-sm font-medium mt-4 mb-1">ビン数</label>

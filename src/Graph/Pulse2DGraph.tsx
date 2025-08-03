@@ -8,6 +8,7 @@ import {
     SidebarGroupLabel, SidebarProvider
 } from "@/components/ui/sidebar.tsx";
 import { Slider } from "@/components/ui/slider";
+import {autoWrapLatex} from "@/Graph/TESAGraph.tsx";
 
 export interface Pulse2DProps {
     xdata: number[];
@@ -131,18 +132,18 @@ export function Pulse2D({ xdata, ydata, xaxis, yaxis, graphRef }: Pulse2DProps) 
 
     const layout = {
         title: {
-            text: titles.Pulse2D.main,
+            text: autoWrapLatex(titles.Pulse2D.main),
             font: { size: fontSizes.main }
         },
         xaxis: {
             title: {
-                text: titles.Pulse2D.xaxis,
+                text: autoWrapLatex(titles.Pulse2D.xaxis),
                 font: { size: fontSizes.xaxis }
             }
         },
         yaxis: {
             title: {
-                text: titles.Pulse2D.yaxis,
+                text: autoWrapLatex(titles.Pulse2D.yaxis),
                 font: { size: fontSizes.yaxis }
             }
         },

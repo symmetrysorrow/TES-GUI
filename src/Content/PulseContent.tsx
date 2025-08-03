@@ -9,7 +9,7 @@ import PulseConfig from "@/Graph/PulseConfig.tsx";
 import {Button} from "@/components/ui/button.tsx";
 import {Progress} from "@/components/ui/progress.tsx";
 import { TESGraphRef } from "@/Graph/TESGraph";
-import PrintModal from "@/Graph/TESGraphModal.tsx";
+import PrintPopover from "@/Graph/TESGraphPrintPopover.tsx";
 import {RefreshCw, Settings} from "lucide-react";
 
 // 型定義はそのままでOK
@@ -445,7 +445,7 @@ export const PulseContent = ({ tabId }: { tabId: string }) => {
                         })}
                         </div>
                         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-2">
-                            <PrintModal graphRef={graphRef}/>
+                            <PrintPopover graphRef={graphRef}/>
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <RefreshCw />

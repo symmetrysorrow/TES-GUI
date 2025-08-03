@@ -10,7 +10,7 @@ import TESGraph, {TESGraphProps, TESGraphRef} from "./TESGraph";
 import { PlotData } from "plotly.js";
 import {Tab, TabGroup, TabList, TabPanels, TabPanel} from "@headlessui/react";
 import { Menu, } from "lucide-react";
-import PrintModal from "@/Graph/TESGraphModal.tsx";
+import PrintPopover from "@/Graph/TESGraphPrintPopover.tsx";
 import { TESASidebar } from "@/Graph/TESASidebar.tsx";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar.tsx";
 
@@ -26,6 +26,39 @@ const fixedColors = [
     "#bcbd22", // olive
     "#17becf", // cyan
 ];
+export function autoWrapLatex(input:string) {
+    const regex = /\$(.+?)\$/g;
+
+    let lastIndex = 0;
+    let result = "";
+
+    let match;
+    while ((match = regex.exec(input)) !== null) {
+        const start = match.index;
+        const end = regex.lastIndex;
+
+        if (start > lastIndex) {
+            const outside = input.substring(lastIndex, start);
+            if (outside.trim() !== "") {
+                result += `\\text{${outside}}`;
+            }
+        }
+
+        const inside = match[1];
+        result += inside;
+
+        lastIndex = end;
+    }
+
+    if (lastIndex < input.length) {
+        const outside = input.substring(lastIndex);
+        if (outside.trim() !== "") {
+            result += `\\text{${outside}}`;
+        }
+    }
+
+    return `$${result}$`;
+}
 
 
 export interface TESAData {
@@ -207,7 +240,7 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                     <CustomSidebarTrigger />
                                 </div>
                                 <div className="absolute right-8 top-1/2 -translate-y-1/2 p-1 text-gray-600 hover:text-gray-800">
-                                    <PrintModal graphRef={innerGraphRefs.current[selectedTab]}/>
+                                    <PrintPopover graphRef={innerGraphRefs.current[selectedTab]}/>
                                 </div>
 
                             </TabList>
@@ -231,9 +264,9 @@ const TESAGraph = forwardRef<TESGraphRef, TESAGraphProps>(
                                                 ref={innerGraphRefs.current[tab.label]}
                                                 data={createPlotData(tab)}
                                                 layout={{
-                                                    title: { text: titles[tab.label].main, font: { size: fontSizes[tab.label].main } },
-                                                    xaxis: { title: { text: titles[tab.label].xaxis, font: { size: fontSizes[tab.label].xaxis } } },
-                                                    yaxis: { title: { text: titles[tab.label].yaxis, font: { size: fontSizes[tab.label].yaxis } } },
+                                                    title: { text: autoWrapLatex(titles[tab.label].main), font: { size: fontSizes[tab.label].main } },
+                                                    xaxis: { title: { text: autoWrapLatex(titles[tab.label].xaxis), font: { size: fontSizes[tab.label].xaxis } } },
+                                                    yaxis: { title: { text: autoWrapLatex(titles[tab.label].yaxis), font: { size: fontSizes[tab.label].yaxis } } },
                                                 }}
                                                 {...restProps}
                                             />

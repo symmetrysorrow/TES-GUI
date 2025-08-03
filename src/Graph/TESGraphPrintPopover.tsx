@@ -9,11 +9,11 @@ import { writeFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
 import { Printer } from "lucide-react";
 
-type PrintModalProps = {
+type PrintPopoverProps = {
     graphRef: React.RefObject<TESGraphRef>;
 };
 
-export default function PrintModal({ graphRef }: PrintModalProps) {
+export default function PrintPopover({ graphRef }: PrintPopoverProps) {
     const [imageUri, setImageUri] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [open, setOpen] = useState(false);

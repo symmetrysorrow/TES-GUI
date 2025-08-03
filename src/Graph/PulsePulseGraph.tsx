@@ -11,7 +11,8 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { PlotData } from "plotly.js";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";  // shadcn slider
+import { Slider } from "@/components/ui/slider";
+import {autoWrapLatex} from "@/Graph/TESAGraph.tsx";  // shadcn slider
 
 type PulseAnalysisResult = {
     Time: number[];
@@ -209,9 +210,9 @@ export function PulsePulse({ tabId, pulseIndex, channel, pulseConfigVer, graphRe
     }
 
     const layout = {
-        title: { text: titles.Pulse.main, font: { size: titleFontSizes.main } },
-        xaxis: { title: { text: titles.Pulse.xaxis, font: { size: titleFontSizes.xaxis } } },
-        yaxis: { title: { text: titles.Pulse.yaxis, font: { size: titleFontSizes.yaxis } } },
+        title: { text: autoWrapLatex(titles.Pulse.main), font: { size: titleFontSizes.main } },
+        xaxis: { title: { text: autoWrapLatex(titles.Pulse.xaxis), font: { size: titleFontSizes.xaxis } } },
+        yaxis: { title: { text: autoWrapLatex(titles.Pulse.yaxis), font: { size: titleFontSizes.yaxis } } },
         bargap: 0.05,
     };
 

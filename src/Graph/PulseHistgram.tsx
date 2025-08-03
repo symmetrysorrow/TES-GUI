@@ -8,6 +8,7 @@ import {
     SidebarGroupLabel, SidebarProvider
 } from "@/components/ui/sidebar.tsx";
 import { Slider } from "@/components/ui/slider";
+import {autoWrapLatex} from "@/Graph/TESAGraph.tsx";
 
 export interface HistogramProps {
     data: number[];
@@ -158,9 +159,9 @@ export function PulseHistogram({ data, binNum: initialBinNum, xaxis, yaxis, grap
     ];
 
     const layout = {
-        title: { text: titles.Histogram.main, font: { size: fontSizes.main } },
-        xaxis: { title: { text: titles.Histogram.xaxis, font: { size: fontSizes.xaxis } } },
-        yaxis: { title: { text: titles.Histogram.yaxis, font: { size: fontSizes.yaxis } } },
+        title: { text: autoWrapLatex(titles.Histogram.main), font: { size: fontSizes.main } },
+        xaxis: { title: { text: autoWrapLatex(titles.Histogram.xaxis), font: { size: fontSizes.xaxis } } },
+        yaxis: { title: { text: autoWrapLatex(titles.Histogram.yaxis), font: { size: fontSizes.yaxis } } },
         bargap: 0.05,
     };
 

@@ -32,7 +32,7 @@ const IVContent = ({ tabId }: { tabId: string }) => {
                         setIVData(res);
                         setIsLoading(false);
                     })
-                    .catch((e) => console.error(e));
+                    .catch((e) => alert(e));
             })
     }, [tabId]);
 
@@ -75,7 +75,6 @@ const IVContent = ({ tabId }: { tabId: string }) => {
                         .catch((e) => console.error(e));
                 })
                 .catch((e) => {
-                    console.error("キャリブレーション中にエラーが発生しました:", e);
                     alert("キャリブレーション中にエラーが発生しました。\n" + e);
                 });
         }

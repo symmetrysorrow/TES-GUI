@@ -216,7 +216,7 @@ impl PulseProcessorS {
         let InfoPath = self
             .DP
             .DataPath
-            .join(format!("CH{}_pulse", Channel))
+            .join(format!("CH{}", Channel))
             .join("Info.csv");
         let mut InfoFile = File::create(&InfoPath)
             .map_err(|e| format!("Failed to create {:?}\n{}", InfoPath, e))?;
@@ -265,7 +265,7 @@ impl PulseProcessorS {
         let InfoPath = self
             .DP
             .DataPath
-            .join(format!("CH{}_pulse", Channel))
+            .join(format!("CH{}", Channel))
             .join("Info.csv");
         let InfoFile =
             File::open(&InfoPath).map_err(|e| format!("Failed to open {:?}\n{}", InfoPath, e))?;
@@ -311,7 +311,7 @@ impl PulseProcessorS {
         let pulse_pattern = Regex::new(r"CH\d+_(\d+)\.dat$").map_err(|e| format!("Regex Error\n{}", e))?;
 
         let pulse_paths = glob(&format!(
-            "{}/CH{}_pulse/rawdata/CH{}_*.dat",
+            "{}/CH{}/rawdata/CH{}_*.dat",
             self.DP.DataPath.display(),
             Channel,
             Channel
@@ -485,7 +485,7 @@ impl PulseProcessorS {
             let info_path = self
                 .DP
                 .DataPath
-                .join(format!("CH{}_pulse", ch))
+                .join(format!("CH{}", ch))
                 .join("Info.csv");
             if info_path.exists() {
                 self.LoadPulseInfos(&ch)?;

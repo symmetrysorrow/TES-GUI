@@ -62,6 +62,7 @@ export const PulseContent = ({ tabId }: { tabId: string }) => {
                 }
             } catch (e) {
                 console.error(e);
+                setStatus("Ready");
                 alert("初期ロードエラー\n" + e);
             }
         };

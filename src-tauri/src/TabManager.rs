@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use crate::DataProcessor::{LoadBi};
+use crate::DataProcessor::{LoadBi, LoadTxt};
 use crate::PulseProcessor::PulseProcessorS;
 use crate::TESAnalyzer::IV::IVProcessorS;
 use crate::TESAnalyzer::RT::RTProcessorS;
@@ -456,7 +456,7 @@ pub fn GetPulseAnalysisCommand(
 
             let Time:Vec<f64>=(0..p.PRConfig.Sample as usize).map(|n|n as f64/p.PRConfig.Rate).collect();
 
-            let mut Pulse = LoadBi(Path::new(&path))?;
+            let mut Pulse = LoadTxt(Path::new(&path))?;
 
             let FilteredPulse =PulseProcessor::filtfilt(&p.BesselCoeffs[0],&p.BesselCoeffs[0],&Pulse).map_err(|e| format!("Filter error: {}", e))?;
             let (PI, PIH, PAH) = crate::PulseProcessor::GetPulseInfo(&PRConfig, &PAConfig,Array1::from( FilteredPulse.clone()))?;

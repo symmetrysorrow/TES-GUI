@@ -2,7 +2,7 @@
 
 use std::cmp::max;
 use crate::Config::{PulseAnalysisConfig, PulseProcessorConfig, PulseReadoutConfig};
-use crate::DataProcessor::{DataProcessorS, LoadBi};
+use crate::DataProcessor::{DataProcessorS,  LoadTxt};
 use crate::PyMod::BesselCoefficients;
 use glob::glob;
 use ndarray::{s, Array1};
@@ -345,7 +345,7 @@ impl PulseProcessorS {
             numbers_clone.par_iter()
                 .zip(paths_clone.par_iter())
                 .for_each(|(num, path)| {
-                    if let Ok(pulse) = LoadBi(path) {
+                    if let Ok(pulse) = LoadTxt(path) {
                         let filtered_pulse = filtfilt(&bessel_clone[0],&bessel_clone[1],&pulse).map_err(|e| format!("Filter error: {}", e)).unwrap();
                         if let Ok((pi, _, _)) = GetPulseInfo(&PRConfig,&PAConfig,Array1::from(filtered_pulse)) {
                             let mut map = pulse_infos_clone.lock().unwrap();
@@ -465,6 +465,13 @@ impl PulseProcessorS {
 
     pub fn AnalyzePulseFolderPre(&mut self)->Result<String,String>{
         self.LoadJson()?;
+
+        // Besselフィルタ係数の計算（同期）
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        self.BesselCoeffs = rt.block_on(BesselCoefficients(
+            self.PRConfig.Rate,
+            self.PAConfig.CutoffFrequency,
+        ))?;
 
         let ChannelPattern = format!("{}/CH*", self.DP.DataPath.display());
 

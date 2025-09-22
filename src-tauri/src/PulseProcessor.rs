@@ -458,7 +458,7 @@ impl PulseProcessorS {
             self.PAConfig.CutoffFrequency,
         ))?;
 
-        let ChannelPattern = format!("{}/CH*_pulse", self.DP.DataPath.display());
+        let ChannelPattern = format!("{}/CH*", self.DP.DataPath.display());
 
         self.Channels = glob(&ChannelPattern)
             .expect("Failed to read glob pattern")
@@ -468,7 +468,6 @@ impl PulseProcessorS {
                 path.file_name()
                     .and_then(|name| name.to_str()) // OsStr を &str に変換
                     .and_then(|name| name.strip_prefix("CH")) // "CH" を削除
-                    .and_then(|name| name.strip_suffix("_pulse")) // "_pulse" を削除
                     .and_then(|name| name.parse::<u32>().ok()) // 数値としてパース
             })
             .collect();

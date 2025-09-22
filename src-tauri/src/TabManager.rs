@@ -111,10 +111,12 @@ pub fn FindFolderType(folder: String) -> Result<String, String> {
         .flat_map(|entries| entries.filter_map(Result::ok))
         .filter(|entry| entry.path().is_dir()) // ディレクトリのみ対象
         .any(|entry| {
-            let name = entry.file_name().to_string_lossy().into_owned(); // `String` として所有権を取得
+            let name = entry.file_name().to_string_lossy().into_owned();
             name.starts_with("CH")
-                && name.ends_with("_pulse")
-                && name[2..name.len() - 6].chars().all(char::is_numeric) // "CH"の後と"_pulse"の前が数字
+                // "_pulse" が最後についていない場合を対象にする
+                && !name.ends_with("_pulse")
+                // "CH" の後がすべて数字
+                && name[2..].chars().all(char::is_numeric)
         });
 
     if IsPulse {
@@ -442,7 +444,7 @@ pub fn GetPulseAnalysisCommand(
             let mut result = serde_json::Map::new();
 
             let path = PathBuf::from(format!(
-                "{}/CH{}_pulse/rawdata/CH{}_{}.dat",
+                "{}/CH{}/rawdata/CH{}_{}.dat",
                 p.DP.DataPath.display(),
                 Channel,
                 Channel,
@@ -498,7 +500,7 @@ pub fn GetPulseAnalysisCommand(
 
             // 保存先のパスを決める（例: 同じディレクトリに CH{channel}_{key}.json で保存）
             let json_path = PathBuf::from(format!(
-                "{}/CH{}_pulse/rawdata/CH{}_{}.json",
+                "{}/CH{}/rawdata/CH{}_{}.json",
                 p.DP.DataPath.display(),
                 Channel,
                 Channel,

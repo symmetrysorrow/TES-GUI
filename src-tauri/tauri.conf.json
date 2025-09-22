@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tes-gui",
+  "productName": "tes-gui-old",
   "version": "0.1.0",
-  "identifier": "com.tes-gui.app",
+  "identifier": "com.tes-gui-old.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "tes-gui",
+        "title": "tes-gui-old",
         "width": 800,
         "height": 600,
         "create": true

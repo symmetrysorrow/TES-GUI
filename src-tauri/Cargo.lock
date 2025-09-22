@@ -4523,7 +4523,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tes-gui"
+name = "tes-gui-old"
 version = "0.1.0"
 dependencies = [
  "biquad",

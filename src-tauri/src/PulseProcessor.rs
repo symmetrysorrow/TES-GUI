@@ -387,6 +387,31 @@ impl PulseProcessorS {
         Ok(())
     }
 
+    pub fn LoadJson(&mut self) -> Result<(), String> {
+        let JsonPath = self.DP.DataPath.join("PulseConfig.json");
+
+        if !JsonPath.exists() {
+        let JsonPathDefault = PathBuf::from("./Config/PulseConfig.json");
+        if JsonPathDefault.exists() {
+        std::fs::copy(&JsonPathDefault, &JsonPath).map_err(|e| {
+        format!("Failed to copy.{}\n{}", JsonPathDefault.display(), e).to_string()
+        })?;
+        } else {
+        return Err(format!("Failed to find {}.\n", JsonPathDefault.display()).to_string());
+        }
+        }
+
+        let JsonFile =
+        File::open(&JsonPath).map_err(|e| format!("Failed to open {:?}\n{}", JsonPath, e))?;
+
+        let PPC: PulseProcessorConfig = serde_json::from_reader(JsonFile)
+        .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPath, e))?;
+        self.PRConfig = PPC.Readout;
+        self.PAConfig = PPC.Analysis;
+
+        return Ok(());
+    }
+
     pub fn AnalyzePulseFolder<
         F: FnMut(u32, u32, u32),
         G: FnMut(u32, u32),
@@ -395,6 +420,15 @@ impl PulseProcessorS {
         mut OnChannelDone: F,
         mut OnPulseProgress: G,
     ) -> Result<(), String> {
+
+        self.LoadJson()?;
+
+        // Besselフィルタ係数の計算（同期）
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        self.BesselCoeffs = rt.block_on(BesselCoefficients(
+            self.PRConfig.Rate,
+            self.PAConfig.CutoffFrequency,
+        ))?;
 
         let Total=self.Channels.len() as u32;
         println!("Total: {}", self.Channels.len());
@@ -430,33 +464,7 @@ impl PulseProcessorS {
     }
 
     pub fn AnalyzePulseFolderPre(&mut self)->Result<String,String>{
-        let JsonPath = self.DP.DataPath.join("PulseConfig.json");
-
-        if !JsonPath.exists() {
-            let JsonPathDefault = PathBuf::from("./Config/PulseConfig.json");
-            if JsonPathDefault.exists() {
-                std::fs::copy(&JsonPathDefault, &JsonPath).map_err(|e| {
-                    format!("Failed to copy.{}\n{}", JsonPathDefault.display(), e).to_string()
-                })?;
-            } else {
-                return Err(format!("Failed to find {}.\n", JsonPathDefault.display()).to_string());
-            }
-        }
-
-        let JsonFile =
-            File::open(&JsonPath).map_err(|e| format!("Failed to open {:?}\n{}", JsonPath, e))?;
-
-        let PPC: PulseProcessorConfig = serde_json::from_reader(JsonFile)
-            .map_err(|e| format!("Failed to parse {:?}\n{}", JsonPath, e))?;
-        self.PRConfig = PPC.Readout;
-        self.PAConfig = PPC.Analysis;
-
-        // Besselフィルタ係数の計算（同期）
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        self.BesselCoeffs = rt.block_on(BesselCoefficients(
-            self.PRConfig.Rate,
-            self.PAConfig.CutoffFrequency,
-        ))?;
+        self.LoadJson()?;
 
         let ChannelPattern = format!("{}/CH*", self.DP.DataPath.display());
 

@@ -16,20 +16,67 @@ use rayon::prelude::*;
 use std::sync::{Mutex, atomic::{AtomicUsize, Ordering}, Arc};
 use biquad::{Biquad, Coefficients, DirectForm1};
 
-pub fn filtfilt(b:&Vec<f64>,a:&Vec<f64>,pulse:&Array1<f64>)->Result<Vec<f64>,String>{
-    let coeffs = Coefficients::<f64> { b0:b[0], b1:b[1], b2:b[2], a1:a[1], a2:a[2] };
-    // 正方向フィルタ
-    let mut filter_fwd = DirectForm1::<f64>::new(coeffs);
-    let filtered_fwd: Vec<f64> = pulse.iter().map(|&x| filter_fwd.run(x)).collect();
-    // 逆方向フィルタ
-    let mut filter_bwd = DirectForm1::<f64>::new(coeffs);
-    let mut reversed = filtered_fwd.clone();
-    reversed.reverse();
-    let mut filtered_bwd: Vec<f64> = reversed.iter().map(|&x| filter_bwd.run(x)).collect();
-    filtered_bwd.reverse(); // 元の向きに戻す
+fn lfilter(b: &Vec<f64>, a: &Vec<f64>, data: &Vec<f64>) -> Vec<f64> {
+    let order = a.len().max(b.len()) - 1;
+    let mut y = vec![0.0; data.len()];
+    let mut state = vec![0.0; order];
 
-    return Ok(filtered_bwd);
+    for (i, &x) in data.iter().enumerate() {
+        let mut acc = b[0] * x + state[0];
+        y[i] = acc;
+        for j in 0..order - 1 {
+            state[j] = b[j + 1] * x - a[j + 1] * y[i] + state[j + 1];
+        }
+        state[order - 1] = b[order] * x - a[order] * y[i];
+    }
+
+    y
 }
+
+pub fn filtfilt(b: &Vec<f64>, a: &Vec<f64>, pulse: &Array1<f64>) -> Result<Vec<f64>, String> {
+
+    let order = a.len().max(b.len()) - 1;
+    let padding_length = order * 3;
+
+    if pulse.len()==0{
+        return Err("Empty pulse array".to_string());
+    }
+
+    if pulse.len() <= padding_length {
+        return Err(format!(
+            "データ長 {} がパディング長 {} より短すぎます",
+            pulse.len(),
+            padding_length
+        ));
+    }
+
+    // --- データをパディング ---
+    let mut padded = vec![0.0; pulse.len() + 2 * padding_length];
+    let len = padded.len();
+    for i in 0..padding_length {
+        padded[i] = 2.0 * pulse[0] - pulse[padding_length - i];
+        padded[len - 1 - i] = 2.0 * pulse[pulse.len() - 1] - pulse[pulse.len() - 2 - i];
+    }
+    for i in 0..pulse.len() {
+        padded[padding_length + i] = pulse[i];
+    }
+
+    // --- forward フィルタ ---
+    let forward = lfilter(b, a, &padded);
+
+    // --- reverse フィルタ ---
+    let mut reversed: Vec<f64> = forward.iter().rev().copied().collect();
+    reversed = lfilter(b, a, &reversed);
+
+    // --- 出力の切り出し ---
+    let mut output = vec![0.0; pulse.len()];
+    for i in 0..pulse.len() {
+        output[i] = reversed[reversed.len() - padding_length - i - 1];
+    }
+
+    Ok(output)
+}
+
 
 pub fn GetPulseInfo(
     PRConfig: &PulseReadoutConfig,
@@ -346,10 +393,11 @@ impl PulseProcessorS {
                 .zip(paths_clone.par_iter())
                 .for_each(|(num, path)| {
                     if let Ok(pulse) = LoadBi(path) {
-                        let filtered_pulse = filtfilt(&bessel_clone[0],&bessel_clone[1],&pulse).map_err(|e| format!("Filter error: {}", e)).unwrap();
-                        if let Ok((pi, _, _)) = GetPulseInfo(&PRConfig,&PAConfig,Array1::from(filtered_pulse)) {
-                            let mut map = pulse_infos_clone.lock().unwrap();
-                            map.insert(*num as u32, pi);
+                        if let Ok(FilteredPulse)=filtfilt(&bessel_clone[1],&bessel_clone[0],&pulse).map_err(|e| format!("Filter error: {}", e)){
+                            if let Ok((pi, _, _)) = GetPulseInfo(&PRConfig,&PAConfig,Array1::from(FilteredPulse)) {
+                                let mut map = pulse_infos_clone.lock().unwrap();
+                                map.insert(*num as u32, pi);
+                            }
                         }
                     }
                     done_clone.fetch_add(1, Ordering::SeqCst);

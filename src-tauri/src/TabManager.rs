@@ -456,7 +456,7 @@ pub fn GetPulseAnalysisCommand(
 
             let mut Pulse = LoadBi(Path::new(&path))?;
 
-            let FilteredPulse =PulseProcessor::filtfilt(&p.BesselCoeffs[0],&p.BesselCoeffs[0],&Pulse).map_err(|e| format!("Filter error: {}", e))?;
+            let FilteredPulse =PulseProcessor::filtfilt(&p.BesselCoeffs[1],&p.BesselCoeffs[0],&Pulse).map_err(|e| format!("Filter error: {}", e))?;
             let (PI, PIH, PAH) = crate::PulseProcessor::GetPulseInfo(&PRConfig, &PAConfig,Array1::from( FilteredPulse.clone()))?;
 
             Pulse-=PI.Base;
